@@ -1,0 +1,53 @@
+{
+  "cicids2017": {
+    "baselines": [
+      {"name": "Signature IDS",  "clean": 0.268, "adv": null,  "fpr": 0.400, "dp": false},
+      {"name": "Random Forest",  "clean": 0.966, "adv": null,  "fpr": 0.012, "dp": false},
+      {"name": "LSTM Network",   "clean": 0.843, "adv": null,  "fpr": 0.038, "dp": false},
+      {"name": "CNN on Features","clean": 0.951, "adv": null,  "fpr": 0.021, "dp": false},
+      {"name": "GNN Baseline",   "clean": 0.748, "adv": 0.672, "fpr": 0.049, "dp": false},
+      {"name": "FAGI",           "clean": 0.756, "adv": 0.744, "fpr": 0.031, "dp": true,
+       "clean_std": 0.017, "adv_std": 0.012}
+    ],
+    "adversarial_robustness": {
+      "gnn_clean": 0.748, "gnn_adv": 0.672,
+      "fagi_clean": 0.756, "fagi_adv": 0.744,
+      "gap_pp": 7.2
+    }
+  },
+  "api_native": {
+    "lateral_movement": {
+      "rf": 0.990, "gnn": 0.870, "fagi": 0.887,
+      "rf_std": 0.005, "gnn_std": 0.014, "fagi_std": 0.017
+    },
+    "llm_contribution": {
+      "without_payload": 0.898, "with_payload": 0.925,
+      "gain_pp": 2.7
+    },
+    "graph_structure_attack": {
+      "gnn":  {"clean": 0.722, "edge_40": 0.721, "edge_80": 0.719},
+      "fagi": {"clean": 0.742, "edge_40": 0.746, "edge_80": 0.744}
+    }
+  },
+  "ablation": {
+    "variants": [
+      {"name": "FAGI (full)",     "clean": 0.756, "adv": 0.744, "dp": true},
+      {"name": "FAGI − LLM",      "clean": 0.741, "adv": 0.739, "dp": true},
+      {"name": "FAGI − GNNGuard", "clean": 0.754, "adv": 0.689, "dp": true},
+      {"name": "FAGI − PGD",      "clean": 0.753, "adv": 0.672, "dp": true},
+      {"name": "FAGI − Federated","clean": 0.761, "adv": 0.742, "dp": false},
+      {"name": "GNN Baseline",    "clean": 0.748, "adv": 0.672, "dp": false}
+    ]
+  },
+  "federated": {
+    "rf_central": 0.944,
+    "fagi_central": 0.628,
+    "fagi_federated": 0.499,
+    "membership_inference": {
+      "fagi": 0.518, "centralised": 0.786
+    }
+  },
+  "privacy": {
+    "epsilon": 2.0, "delta": 1e-5, "sigma": 1.1, "clip_norm": 1.0
+  }
+}
