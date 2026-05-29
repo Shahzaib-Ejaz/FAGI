@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAGI — Experimental Results Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Syne:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0B0D11;
+    --surface:   #13161D;
+    --surface2:  #1C2029;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.12);
+    --text:      #E8EAF0;
+    --muted:     #6B7280;
+    --accent:    #3B82F6;
+    --accent2:   #60A5FA;
+    --green:     #10B981;
+    --green2:    #34D399;
+    --amber:     #F59E0B;
+    --amber2:    #FCD34D;
+    --red:       #EF4444;
+    --purple:    #8B5CF6;
+    --teal:      #14B8A6;
+    --fagi:      #3B82F6;
+    --gnn:       #6B7280;
+    --rf:        #D97706;
+    --mono:      'JetBrains Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  .masthead {
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 2.5rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .masthead-left h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #fff;
+  }
+  .masthead-left h1 span { color: var(--accent2); }
+  .masthead-left p {
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-top: 4px;
+    font-family: var(--mono);
+  }
+  .status-bar {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--muted);
+  }
+  .chip.ok { border-color: rgba(16,185,129,0.4); color: var(--green2); }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .page { max-width: 1200px; margin: 0 auto; padding: 2rem 2.5rem 4rem; }
+
+  .section { margin-bottom: 3.5rem; }
+  .section-title {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-family: var(--mono);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Stat cards ──────────────────────────────────────────── */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 2rem; }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-color, var(--accent));
+  }
+  .stat .label { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); margin-bottom: 6px; }
+  .stat .value { font-size: 2rem; font-weight: 700; color: #fff; line-height: 1; }
+  .stat .sub   { font-size: 0.72rem; color: var(--muted); margin-top: 6px; font-family: var(--mono); }
+  .stat.highlight { border-color: rgba(59,130,246,0.3); background: rgba(59,130,246,0.05); }
+  .stat.highlight .value { color: var(--accent2); }
+  .stat.green-stat { --accent-color: var(--green); }
+  .stat.amber-stat { --accent-color: var(--amber); }
+  .stat.blue-stat  { --accent-color: var(--accent); }
+  .stat.purple-stat{ --accent-color: var(--purple); }
+
+  /* ── Chart cards ─────────────────────────────────────────── */
+  .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .chart-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media(max-width: 900px) {
+    .chart-grid-2, .chart-grid-3 { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: .9rem 1.25rem .7rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .card-title { font-size: 0.85rem; font-weight: 600; color: #fff; }
+  .card-meta  { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); }
+  .card-body  { padding: 1.25rem; }
+
+  /* ── Legend ──────────────────────────────────────────────── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── Table ───────────────────────────────────────────────── */
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  .results-table th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: .6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+  .results-table td {
+    padding: .65rem 1rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+  }
+  .results-table tr:last-child td { border-bottom: none; }
+  .results-table tr.fagi-row td { color: var(--accent2); background: rgba(59,130,246,0.04); }
+  .results-table tr.fagi-row td:first-child { border-left: 2px solid var(--accent); }
+  .bar-cell { display: flex; align-items: center; gap: 10px; }
+  .mini-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+    flex: 1;
+    max-width: 100px;
+    position: relative;
+    overflow: hidden;
+  }
+  .mini-bar-fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    border-radius: 3px;
+  }
+  .dp-badge {
+    font-size: 0.65rem;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-family: var(--mono);
+  }
+  .dp-yes { background: rgba(16,185,129,0.15); color: var(--green2); }
+  .dp-no  { background: rgba(107,114,128,0.15); color: var(--muted); }
+  .na     { color: var(--muted); }
+
+  /* ── Key finding callout ─────────────────────────────────── */
+  .finding {
+    background: rgba(59,130,246,0.06);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 10px;
+    padding: 1.1rem 1.4rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .finding-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
+  .finding-text { font-size: 0.84rem; color: var(--text); line-height: 1.6; }
+  .finding-text strong { color: var(--accent2); font-weight: 600; }
+
+  /* ── How to run ──────────────────────────────────────────── */
+  .how-to {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+  }
+  .how-to h3 { font-size: 0.85rem; color: #fff; margin-bottom: .75rem; }
+  .how-to ol { padding-left: 1.2rem; font-size: 0.82rem; color: var(--muted); }
+  .how-to li { margin-bottom: .4rem; line-height: 1.6; }
+  .how-to code {
+    font-family: var(--mono);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: var(--accent2);
+  }
+
+  /* ── Loading state ───────────────────────────────────────── */
+  #loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.82rem;
+  }
+  .spinner {
+    width: 24px; height: 24px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #error-state {
+    display: none;
+    background: rgba(239,68,68,0.07);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.84rem;
+    color: #FCA5A5;
+    font-family: var(--mono);
+  }
+  #main-content { display: none; }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div class="masthead-left">
+    <h1>FAGI — <span>Experimental Results</span></h1>
+    <p>Federated Adversarial Graph Intelligence · Shahzaib Ejaz · North American University</p>
+  </div>
+  <div class="status-bar" id="status-bar">
+    <span class="chip">loading...</span>
+  </div>
+</div>
+
+<div class="page">
+  <div id="loading">
+    <div class="spinner"></div>
+    <span>loading results from paper_results.json...</span>
+  </div>
+
+  <div id="error-state"></div>
+
+  <div id="main-content">
+
+    <!-- ── KEY FINDING ──────────────────────────────────── -->
+    <div class="finding" style="margin-top:0.5rem; margin-bottom:2rem;">
+      <div class="finding-icon">⚡</div>
+      <div class="finding-text">
+        <strong>Primary result:</strong> FAGI retains <strong id="kf-fagi-adv">74.4%</strong> accuracy under PGD feature-space attack
+        versus <strong id="kf-gnn-adv">67.2%</strong> for the GNN baseline —
+        a <strong id="kf-gap">7.2 pp</strong> robustness advantage.
+        FAGI is the only evaluated approach simultaneously providing adversarial robustness,
+        (ε=2.0, δ=10⁻⁵)-DP privacy, and graph-topology-aware API threat detection.
+      </div>
+    </div>
+
+    <!-- ── OVERVIEW STATS ────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">overview</div>
+      <div class="stat-grid" id="stat-grid"></div>
+    </div>
+
+    <!-- ── BASELINE COMPARISON ───────────────────────────── -->
+    <div class="section">
+      <div class="section-title">baseline comparison — cicids2017</div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Full Baseline Comparison</span>
+          <span class="card-meta">5-fold CV · 130,576 flows · 7 classes</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <table class="results-table" id="baseline-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Clean acc.</th>
+                <th>Adv. acc. (PGD ε=0.1)</th>
+                <th>FPR</th>
+                <th>DP</th>
+              </tr>
+            </thead>
+            <tbody id="baseline-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CHARTS ROW 1 ──────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">adversarial robustness</div>
+      <div class="chart-grid-2">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Feature-Space PGD Attack</span>
+            <span class="card-meta">CICIDS2017 · ε=0.1, K=10</span>
+          </div>
+          <div class="card-body">
+            <div class="legend">
+              <div class="legend-item"><div class="legend-dot" style="background:#3B82F6"></div>FAGI</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#6B7280"></div>GNN Baseline</div>
+            </div>
+            <div style="position:relative;height:240px">
+              <canvas id="chart-adv-pgd" role="img" aria-label="Grouped bar chart comparing FAGI and GNN accuracy under PGD attack. FAGI: 75.6% clean, 74.4% adversarial. GNN: 74.8% clean, 67.2% adversarial.">FAGI clean 75.6%, adversarial 74.4%. GNN clean 74.8%, adversarial 67.2%.</canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Graph Structure Attack</span>
+            <span class="card-meta">API-native · spurious edge injection</span>
+          </div>
+          <div class="card-body">
+            <div class="legend">
+              <div class="legend-item"><div class="legend-dot" style="background:#3B82F6"></div>FAGI + GNNGuard</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#6B7280"></div>GNN (no GNNGuard)</div>
+            </div>
+            <div style="position:relative;height:240px">
+              <canvas id="chart-structure-attack" role="img" aria-label="Line chart showing accuracy under increasing spurious edge injection. FAGI stays stable around 74%. GNN degrades from 72.2% to 71.9%.">FAGI stable ~74%. GNN degrades 72.2% → 71.9%.</canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── CHARTS ROW 2 ──────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">api-native evaluation</div>
+      <div class="chart-grid-2">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Lateral Movement Detection</span>
+            <span class="card-meta">RF detects THAT admin reached; FAGI detects HOW</span>
+          </div>
+          <div class="card-body">
+            <div style="position:relative;height:240px">
+              <canvas id="chart-lateral" role="img" aria-label="Bar chart comparing RF 99%, GNN 87%, FAGI 88.7% on lateral movement detection.">RF 99.0%, GNN 87.0%, FAGI 88.7%.</canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">LLM Payload Contribution</span>
+            <span class="card-meta">SQL injection · +2.7pp from payload embeddings</span>
+          </div>
+          <div class="card-body">
+            <div style="position:relative;height:240px">
+              <canvas id="chart-llm" role="img" aria-label="Bar chart showing FAGI without payload 89.8% vs FAGI with LLM payload 92.5%.">Without payload 89.8%. With LLM payload 92.5%.</canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── ABLATION ──────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">ablation study — table I</div>
+      <div class="chart-grid-2">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Module Contribution</span>
+            <span class="card-meta">CICIDS2017 · 5-fold CV · adv = PGD ε=0.1</span>
+          </div>
+          <div class="card-body" style="padding:0">
+            <table class="results-table" id="ablation-table">
+              <thead>
+                <tr><th>Variant</th><th>Clean</th><th>Adv.</th><th>DP</th></tr>
+              </thead>
+              <tbody id="ablation-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Adversarial Accuracy by Variant</span>
+            <span class="card-meta">Under PGD attack ε=0.1</span>
+          </div>
+          <div class="card-body">
+            <div style="position:relative;height:260px">
+              <canvas id="chart-ablation" role="img" aria-label="Horizontal bar chart of adversarial accuracy for each ablation variant.">FAGI full 74.4%, minus LLM 73.9%, minus GNNGuard 68.9%, minus PGD 67.2%, minus Federated 74.2%.</canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── PRIVACY ───────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">privacy &amp; federated</div>
+      <div class="chart-grid-2">
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Membership Inference Attack</span>
+            <span class="card-meta">Shadow model · lower = stronger privacy</span>
+          </div>
+          <div class="card-body">
+            <div style="position:relative;height:200px">
+              <canvas id="chart-mi" role="img" aria-label="Bar chart: FAGI membership inference 51.8% vs centralised 78.6%. Random baseline is 50%.">FAGI 51.8% (near random 50%). Centralised 78.6%.</canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">DP Parameters</span>
+            <span class="card-meta">MVG mechanism · moderate guarantee</span>
+          </div>
+          <div class="card-body">
+            <div id="dp-params" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+            <div style="margin-top:1rem;padding:.75rem 1rem;background:rgba(245,158,11,0.07);border:1px solid rgba(245,158,11,0.2);border-radius:8px;font-size:0.76rem;color:#FCD34D;font-family:var(--mono);line-height:1.6">
+              Note: ε=2.0 is a moderate (not strong) DP guarantee.<br>
+              Strong privacy: ε ≤ 1.0. This reflects the accuracy-privacy trade-off necessary to maintain detection utility.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── HOW TO RUN ────────────────────────────────────── -->
+    <div class="section">
+      <div class="section-title">reproduce these results</div>
+      <div class="how-to">
+        <h3>Running experiments locally</h3>
+        <ol>
+          <li>Install dependencies: <code>pip install -r requirements.txt</code></li>
+          <li>Download CICIDS2017 Friday subset into <code>data/cicids2017/</code> — see <code>data/README.md</code></li>
+          <li>Generate synthetic dataset: <code>python data/synthetic/generator.py</code></li>
+          <li>Run primary adversarial experiment: <code>python experiments/exp3_adversarial_robustness.py</code></li>
+          <li>Run full ablation: <code>python experiments/ablation.py</code></li>
+          <li>Results write to <code>experiments/results/*.json</code> — refresh this page to visualise them</li>
+          <li>Run test suite: <code>pytest tests/ -v</code> — all 34 tests should pass</li>
+        </ol>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+</div><!-- /page -->
+
+<script>
+const RESULTS_PATH = 'experiments/results/paper_results.json';
+
+const C = {
+  fagi:   '#3B82F6',
+  gnn:    '#6B7280',
+  rf:     '#F59E0B',
+  green:  '#10B981',
+  red:    '#EF4444',
+  purple: '#8B5CF6',
+  muted:  'rgba(255,255,255,0.08)',
+  text:   '#9CA3AF',
+  grid:   'rgba(255,255,255,0.05)',
+};
+
+const baseChartOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: { legend: { display: false }, tooltip: {
+    backgroundColor: '#1C2029',
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    titleColor: '#fff',
+    bodyColor: '#9CA3AF',
+    titleFont: { family: 'JetBrains Mono', size: 12 },
+    bodyFont: { family: 'JetBrains Mono', size: 11 },
+    callbacks: { label: ctx => ` ${(ctx.parsed.y !== undefined ? ctx.parsed.y : ctx.parsed.x * 100).toFixed(1)}%` }
+  }},
+  scales: {
+    x: { grid: { color: C.grid }, ticks: { color: C.text, font: { family: 'JetBrains Mono', size: 11 } } },
+    y: { grid: { color: C.grid }, ticks: { color: C.text, font: { family: 'JetBrains Mono', size: 11 },
+         callback: v => v + '%' } }
+  }
+};
+
+function pct(v) { return v !== null && v !== undefined ? (v * 100).toFixed(1) + '%' : '—'; }
+function pp(a, b) { return ((a - b) * 100).toFixed(1); }
+
+async function loadAndRender() {
+  try {
+    const res = await fetch(RESULTS_PATH);
+    if (!res.ok) throw new Error(`HTTP ${res.status} — ${res.statusText}`);
+    const d = await res.json();
+    render(d);
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    const errEl = document.getElementById('error-state');
+    errEl.style.display = 'block';
+    errEl.innerHTML = `
+      <strong>Could not load results file</strong><br><br>
+      ${err.message}<br><br>
+      Make sure you are serving this file from the repo root (not opening it directly as file://).<br>
+      Run: <code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:3px">python -m http.server 8080</code>
+      then open <code style="background:rgba(0,0,0,0.3);padding:2px 6px;border-radius:3px">http://localhost:8080/dashboard.html</code>
+    `;
+    document.getElementById('status-bar').innerHTML = '<span class="chip" style="border-color:rgba(239,68,68,0.4);color:#FCA5A5">results not found</span>';
+  }
+}
+
+function render(d) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+
+  const adv = d.cicids2017.adversarial_robustness;
+  const fed = d.federated;
+
+  // ── Status bar
+  document.getElementById('status-bar').innerHTML = `
+    <span class="chip ok">paper_results.json loaded</span>
+    <span class="chip">${d.cicids2017.baselines.length} baselines</span>
+    <span class="chip">${d.ablation.variants.length} ablation variants</span>
+  `;
+
+  // ── Key finding
+  document.getElementById('kf-fagi-adv').textContent = pct(adv.fagi_adv);
+  document.getElementById('kf-gnn-adv').textContent  = pct(adv.gnn_adv);
+  document.getElementById('kf-gap').textContent      = adv.gap_pp.toFixed(1) + ' pp';
+
+  // ── Stats
+  const statGrid = document.getElementById('stat-grid');
+  const stats = [
+    { label: 'FAGI clean acc.', value: pct(adv.fagi_clean), sub: 'CICIDS2017 5-fold CV', cls: 'blue-stat' },
+    { label: 'FAGI adv. acc.', value: pct(adv.fagi_adv), sub: 'Under PGD ε=0.1', cls: 'blue-stat highlight' },
+    { label: 'Robustness gap', value: '+' + adv.gap_pp.toFixed(1) + 'pp', sub: 'vs GNN baseline', cls: 'green-stat' },
+    { label: 'FAGI FPR', value: pct(d.cicids2017.baselines.find(b=>b.name==='FAGI')?.fpr), sub: 'At clean operating point', cls: 'amber-stat' },
+    { label: 'LLM contribution', value: '+' + d.api_native.llm_contribution.gain_pp.toFixed(1) + 'pp', sub: 'SQL injection detection', cls: 'purple-stat' },
+    { label: 'MI attack on FAGI', value: pct(fed.membership_inference.fagi), sub: 'vs 78.6% centralised', cls: 'green-stat' },
+  ];
+  statGrid.innerHTML = stats.map(s => `
+    <div class="stat ${s.cls || ''}">
+      <div class="label">${s.label}</div>
+      <div class="value">${s.value}</div>
+      <div class="sub">${s.sub}</div>
+    </div>
+  `).join('');
+
+  // ── Baseline table
+  const tbody = document.getElementById('baseline-tbody');
+  tbody.innerHTML = d.cicids2017.baselines.map(b => {
+    const isFagi = b.name === 'FAGI';
+    const barW = Math.round(b.clean * 100);
+    const barColor = isFagi ? C.fagi : (b.clean > 0.8 ? C.rf : C.gnn);
+    return `<tr class="${isFagi ? 'fagi-row' : ''}">
+      <td>${b.name}</td>
+      <td><div class="bar-cell">
+        <span>${pct(b.clean)}</span>
+        <div class="mini-bar"><div class="mini-bar-fill" style="width:${barW}%;background:${barColor}"></div></div>
+      </div></td>
+      <td>${b.adv !== null ? pct(b.adv) : '<span class="na">N/A</span>'}</td>
+      <td>${pct(b.fpr)}</td>
+      <td><span class="dp-badge ${b.dp ? 'dp-yes' : 'dp-no'}">${b.dp ? '✓ DP' : '✗'}</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── Chart 1: PGD adversarial
+  new Chart(document.getElementById('chart-adv-pgd'), {
+    type: 'bar',
+    data: {
+      labels: ['Clean', 'Under PGD Attack'],
+      datasets: [
+        { label: 'FAGI', data: [adv.fagi_clean * 100, adv.fagi_adv * 100],
+          backgroundColor: C.fagi, borderRadius: 4, barPercentage: 0.5 },
+        { label: 'GNN Baseline', data: [adv.gnn_clean * 100, adv.gnn_adv * 100],
+          backgroundColor: C.gnn, borderRadius: 4, barPercentage: 0.5 },
+      ]
+    },
+    options: { ...baseChartOpts, scales: { ...baseChartOpts.scales,
+      y: { ...baseChartOpts.scales.y, min: 55, max: 85 }
+    }}
+  });
+
+  // ── Chart 2: graph structure attack
+  const gsa = d.api_native.graph_structure_attack;
+  new Chart(document.getElementById('chart-structure-attack'), {
+    type: 'line',
+    data: {
+      labels: ['Clean', '+40% edges', '+80% edges'],
+      datasets: [
+        { label: 'FAGI + GNNGuard',
+          data: [gsa.fagi.clean * 100, gsa.fagi.edge_40 * 100, gsa.fagi.edge_80 * 100],
+          borderColor: C.fagi, backgroundColor: 'rgba(59,130,246,0.1)',
+          borderWidth: 2, pointRadius: 5, fill: true, tension: 0.3 },
+        { label: 'GNN (no GNNGuard)',
+          data: [gsa.gnn.clean * 100, gsa.gnn.edge_40 * 100, gsa.gnn.edge_80 * 100],
+          borderColor: C.gnn, backgroundColor: 'rgba(107,114,128,0.05)',
+          borderWidth: 2, pointRadius: 5, borderDash: [5,3], fill: false, tension: 0.3 },
+      ]
+    },
+    options: { ...baseChartOpts, scales: { ...baseChartOpts.scales,
+      y: { ...baseChartOpts.scales.y, min: 60, max: 82 }
+    }}
+  });
+
+  // ── Chart 3: lateral movement
+  const lm = d.api_native.lateral_movement;
+  new Chart(document.getElementById('chart-lateral'), {
+    type: 'bar',
+    data: {
+      labels: ['RF (SIEM agg.)', 'GNN (graph)', 'FAGI (full)'],
+      datasets: [{
+        data: [lm.rf * 100, lm.gnn * 100, lm.fagi * 100],
+        backgroundColor: [C.rf, C.gnn, C.fagi],
+        borderRadius: 4, barPercentage: 0.55,
+      }]
+    },
+    options: { ...baseChartOpts, scales: { ...baseChartOpts.scales,
+      y: { ...baseChartOpts.scales.y, min: 60, max: 105 }
+    }}
+  });
+
+  // ── Chart 4: LLM contribution
+  const llm = d.api_native.llm_contribution;
+  new Chart(document.getElementById('chart-llm'), {
+    type: 'bar',
+    data: {
+      labels: ['FAGI − LLM', 'FAGI + LLM'],
+      datasets: [{
+        data: [llm.without_payload * 100, llm.with_payload * 100],
+        backgroundColor: [C.gnn, C.fagi],
+        borderRadius: 4, barPercentage: 0.45,
+      }]
+    },
+    options: { ...baseChartOpts, scales: { ...baseChartOpts.scales,
+      y: { ...baseChartOpts.scales.y, min: 83, max: 98 }
+    }}
+  });
+
+  // ── Ablation table
+  const abTbody = document.getElementById('ablation-tbody');
+  abTbody.innerHTML = d.ablation.variants.map(v => {
+    const isFull = v.name === 'FAGI (full)';
+    return `<tr class="${isFull ? 'fagi-row' : ''}">
+      <td>${v.name}</td>
+      <td>${pct(v.clean)}</td>
+      <td>${pct(v.adv)}</td>
+      <td><span class="dp-badge ${v.dp ? 'dp-yes' : 'dp-no'}">${v.dp ? '✓' : '✗'}</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── Chart 5: ablation horizontal bar
+  new Chart(document.getElementById('chart-ablation'), {
+    type: 'bar',
+    data: {
+      labels: d.ablation.variants.map(v => v.name),
+      datasets: [{
+        data: d.ablation.variants.map(v => v.adv * 100),
+        backgroundColor: d.ablation.variants.map(v => v.name === 'FAGI (full)' ? C.fagi : C.gnn),
+        borderRadius: 4, barPercentage: 0.65,
+      }]
+    },
+    options: {
+      ...baseChartOpts,
+      indexAxis: 'y',
+      scales: {
+        x: { ...baseChartOpts.scales.x, min: 60, max: 80,
+             ticks: { ...baseChartOpts.scales.x.ticks, callback: v => v + '%' } },
+        y: { ...baseChartOpts.scales.y, ticks: {
+          color: C.text, font: { family: 'JetBrains Mono', size: 10 }
+        }}
+      },
+      plugins: { ...baseChartOpts.plugins,
+        tooltip: { ...baseChartOpts.plugins.tooltip,
+          callbacks: { label: ctx => ` Adv. acc: ${ctx.parsed.x.toFixed(1)}%` }
+        }
+      }
+    }
+  });
+
+  // ── Chart 6: membership inference
+  new Chart(document.getElementById('chart-mi'), {
+    type: 'bar',
+    data: {
+      labels: ['FAGI (DP)', 'Centralised\n(no DP)', 'Random\nbaseline'],
+      datasets: [{
+        data: [fed.membership_inference.fagi * 100, fed.membership_inference.centralised * 100, 50],
+        backgroundColor: [C.fagi, C.gnn, 'rgba(107,114,128,0.3)'],
+        borderRadius: 4, barPercentage: 0.5,
+      }]
+    },
+    options: { ...baseChartOpts, scales: { ...baseChartOpts.scales,
+      y: { ...baseChartOpts.scales.y, min: 0, max: 100,
+           ticks: { ...baseChartOpts.scales.y.ticks, callback: v => v + '%' } }
+    }}
+  });
+
+  // ── DP params
+  const dp = d.privacy;
+  document.getElementById('dp-params').innerHTML = [
+    { label: 'ε (epsilon)', value: dp.epsilon.toFixed(1) },
+    { label: 'δ (delta)',   value: '10⁻⁵' },
+    { label: 'σ (sigma)',   value: dp.sigma.toFixed(1) },
+    { label: 'Clip norm C', value: dp.clip_norm.toFixed(1) },
+  ].map(p => `
+    <div style="background:var(--surface2);border-radius:8px;padding:.85rem 1rem">
+      <div style="font-size:0.7rem;color:var(--muted);font-family:var(--mono);margin-bottom:5px">${p.label}</div>
+      <div style="font-size:1.5rem;font-weight:700;color:#fff">${p.value}</div>
+    </div>
+  `).join('');
+}
+
+loadAndRender();
+</script>
+</body>
+</html>
