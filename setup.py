@@ -6,10 +6,10 @@ setup(
     author="Shahzaib Ejaz",
     author_email="sejaz@student.na.edu",
     description="Federated Adversarial Graph Intelligence for Cloud API Threat Detection",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
-    url="https://github.com/shahzaibejaz/FAGI",
-    packages=find_packages(),
+    url="https://github.com/Shahzaib-Ejaz/FAGI",
+    packages=find_packages(include=["fagi", "fagi.*"]),
     python_requires=">=3.9",
     install_requires=[
         "torch>=2.0.0",

@@ -1,20 +1,3 @@
-"""
-Regenerate the FAGI paper figures from experiments/results/paper_results.json.
-
-Usage (from the repo root):
-    python scripts/generate_figures.py
-    python scripts/generate_figures.py --results experiments/results/paper_results.json \
-                                       --out figures --dpi 300
-
-Outputs (PNG at --dpi, plus a vector PDF copy of each):
-    fig3a_cicids_benchmark.png
-    fig3b_api_native.png
-    fig5_adversarial.png
-    fig4_radar.png            (only if "qualitative_scores" is present in the JSON)
-
-Every number quoted in a figure caption is asserted against the JSON first
-(see check_claims), so a caption/data mismatch fails loudly instead of shipping.
-"""
 import argparse
 import json
 import os
@@ -26,10 +9,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Print-safe: distinguishable in grayscale via hatch as well as color.
-C_BASE = "#7a7f87"   # baselines / GNN
-C_FAGI = "#1f5fa8"   # FAGI
-C_ALT = "#c9d3df"    # secondary (e.g. "without payload")
+C_BASE = "#7a7f87"
+C_FAGI = "#1f5fa8"
+C_ALT = "#c9d3df"
 INK = "#222222"
 GRID = "#d9d9d9"
 
@@ -61,7 +43,6 @@ def near(a, b, tol=0.051):
 
 
 def check_claims(r):
-    """Assert every number quoted in the paper captions/text against the JSON."""
     c = r["cicids2017"]["adversarial_robustness"]
     api = r["api_native"]
     fed = r["federated"]

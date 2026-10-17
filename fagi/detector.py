@@ -1,18 +1,3 @@
-"""
-FAGIDetector — High-Level Interface
-=====================================
-Combines all four FAGI modules into a single sklearn-compatible
-estimator for easy use.
-
-Example
--------
->>> from fagi import FAGIDetector
->>> detector = FAGIDetector()
->>> detector.fit(train_sessions, epochs=50)
->>> preds = detector.predict(test_sessions)
->>> proba = detector.predict_proba(test_sessions)
-"""
-
 import copy
 import torch
 import torch.nn.functional as F
@@ -26,40 +11,6 @@ from fagi.privacy.mvg_dp import MVGMechanism
 
 
 class FAGIDetector:
-    """
-    End-to-end FAGI threat detector.
-
-    Parameters
-    ----------
-    hidden_dims : tuple[int, int]
-        GNN hidden layer dimensions. Paper: (64, 32).
-    pgd_epsilon : float
-        PGD perturbation budget ε. Paper: 0.1.
-    pgd_steps : int
-        PGD attack steps K. Paper: 10.
-    gnnguard_threshold : float or None
-        GNNGuard cosine similarity threshold τ. Paper: 0.15.
-        Set None to disable GNNGuard (FAGI−GNNGuard ablation).
-    use_adversarial_training : bool
-        Whether to use PGD adversarial training.
-        Set False for FAGI−PGD ablation.
-    dp_epsilon : float
-        Differential privacy budget ε. Paper: 2.0 (moderate guarantee).
-    dp_delta : float
-        DP failure probability δ. Paper: 1e-5.
-    dp_sigma : float
-        MVG noise multiplier σ. Paper: 1.1.
-    dp_clip_norm : float
-        Gradient clipping norm C. Paper: 1.0.
-    include_payload : bool
-        Whether to use payload suspicion scores as node features.
-        Set False for FAGI−LLM ablation.
-    lr : float
-        Learning rate. Default: 2e-3.
-    device : str
-        Compute device. Default: 'cpu'.
-    """
-
     def __init__(
         self,
         hidden_dims: tuple = (64, 32),
@@ -80,13 +31,14 @@ class FAGIDetector:
         self.pgd_steps = pgd_steps
         self.gnnguard_threshold = gnnguard_threshold
         self.use_adversarial_training = use_adversarial_training
+        self.dp_epsilon = dp_epsilon
+        self.dp_delta = dp_delta
         self.dp_sigma = dp_sigma
         self.dp_clip_norm = dp_clip_norm
         self.include_payload = include_payload
         self.lr = lr
         self.device = device
 
-        # Initialise modules
         self.graph_constructor = APIGraphConstructor(
             include_payload=include_payload
         )
@@ -110,24 +62,6 @@ class FAGIDetector:
         batch_size: int = 250,
         verbose: bool = True,
     ) -> "FAGIDetector":
-        """
-        Train the FAGI detector on a list of labelled API sessions.
-
-        Parameters
-        ----------
-        sessions : list[dict]
-            Each dict has 'calls' (list of call dicts) and 'label' (0/1).
-        epochs : int
-            Training epochs.
-        batch_size : int
-            Max graphs per gradient step.
-        verbose : bool
-            Print epoch losses.
-
-        Returns
-        -------
-        self
-        """
         graphs = self.graph_constructor.sessions_to_graphs(sessions)
         optimizer = torch.optim.Adam(
             self.model.parameters(),
@@ -171,21 +105,7 @@ class FAGIDetector:
         sessions: List[dict],
         adversarial: bool = False,
     ) -> np.ndarray:
-        """
-        Predict threat labels for API sessions.
-
-        Parameters
-        ----------
-        sessions : list[dict]
-            Sessions to classify.
-        adversarial : bool
-            If True, evaluate under PGD attack (adversarial accuracy).
-
-        Returns
-        -------
-        np.ndarray of int
-            Predicted labels: 0 = benign, 1 = malicious.
-        """
+        self._check_fitted()
         graphs = self.graph_constructor.sessions_to_graphs(sessions)
         self.model.eval()
         predictions = []
@@ -209,14 +129,7 @@ class FAGIDetector:
         return np.array(predictions)
 
     def predict_proba(self, sessions: List[dict]) -> np.ndarray:
-        """
-        Return class probability estimates.
-
-        Returns
-        -------
-        np.ndarray, shape (n_sessions, 2)
-            Columns: [P(benign), P(malicious)]
-        """
+        self._check_fitted()
         graphs = self.graph_constructor.sessions_to_graphs(sessions)
         self.model.eval()
         probs = []
@@ -230,13 +143,15 @@ class FAGIDetector:
 
         return np.array(probs)
 
+    def _check_fitted(self) -> None:
+        if not self._is_fitted:
+            raise RuntimeError("Call fit() or load() before predicting.")
+
     def save(self, path: str) -> None:
-        """Save model weights to disk."""
         torch.save(self.model.state_dict(), path)
         print(f"Model saved to {path}")
 
     def load(self, path: str) -> "FAGIDetector":
-        """Load model weights from disk."""
         self.model.load_state_dict(
             torch.load(path, map_location=self.device)
         )

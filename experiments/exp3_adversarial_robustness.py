@@ -1,30 +1,5 @@
-"""
-Experiment 3: Adversarial Robustness
-======================================
-Primary empirical result of the paper:
-  - FAGI retains 74.4% accuracy under PGD attack
-  - GNN Baseline degrades from 74.8% to 67.2%
-  - Robustness advantage: +7.2 percentage points
-
-This script reproduces both sub-experiments:
-  (a) Feature-space PGD attack on CICIDS2017
-  (b) Graph structure attack (spurious edge injection) on API-native data
-
-Expected output:
-  GNN  clean=74.8%  adv=67.2%  degradation=7.6pp
-  FAGI clean=75.6%  adv=74.4%  degradation=1.2pp
-  Robustness gap: +7.2pp (McNemar p < 0.01)
-
-Usage
------
-  python experiments/exp3_adversarial_robustness.py \
-    --data_path data/cicids2017/ \
-    --api_data data/synthetic/sessions_final.json \
-    --n_folds 5 \
-    --output experiments/results/exp3.json
-"""
-
 import json
+import sys
 import argparse
 import numpy as np
 import torch
@@ -43,7 +18,6 @@ import torch.nn.functional as F
 
 
 def train_model(model, graphs, epochs=25, adv=False, pgd_eps=0.1, pgd_k=10):
-    """Train a GNN model with optional adversarial training."""
     opt = torch.optim.Adam(model.parameters(), lr=2e-3, weight_decay=1e-4)
     for e in range(epochs):
         model.train()
@@ -63,13 +37,12 @@ def train_model(model, graphs, epochs=25, adv=False, pgd_eps=0.1, pgd_k=10):
             with torch.no_grad():
                 for p in model.parameters():
                     if p.grad is not None:
-                        p.grad += torch.randn_like(p.grad) * 0.004  # MVG noise σ=1.1 approx
+                        p.grad += torch.randn_like(p.grad) * 0.004
             opt.step()
     return model
 
 
 def eval_model(model, graphs, adv=False, eps=0.1, k=10, use_gnnguard=False):
-    """Evaluate model, optionally under PGD attack."""
     model.eval()
     preds = []
     for g in graphs:
@@ -87,24 +60,14 @@ def eval_model(model, graphs, adv=False, eps=0.1, k=10, use_gnnguard=False):
 
 
 def run_cicids_adversarial(data_path, n_folds=5):
-    """
-    Sub-experiment (a): Feature-space PGD on CICIDS2017.
-    Uses k-NN graph construction from 78-dim flow features.
-    """
     print("\n[Exp 3a] Feature-Space PGD on CICIDS2017")
     print("=" * 50)
 
-    # Load CICIDS2017
     try:
         from data.cicids2017 import load_cicids2017_graphs
         graphs_gnn, graphs_fagi, y = load_cicids2017_graphs(data_path)
     except Exception as e:
-        print(f"  Could not load CICIDS2017: {e}")
-        print("  Using stored results from paper.")
-        return {
-            "gnn_clean": 0.748, "gnn_adv": 0.672,
-            "fagi_clean": 0.756, "fagi_adv": 0.744,
-        }
+        sys.exit(f"Could not load CICIDS2017 from {data_path}: {e}")
 
     skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=42)
     results = {"gnn_clean": [], "gnn_adv": [], "fagi_clean": [], "fagi_adv": []}
@@ -115,13 +78,11 @@ def run_cicids_adversarial(data_path, n_folds=5):
         GN_tr = [graphs_gnn[i] for i in tr]; GN_te = [graphs_gnn[i] for i in te]
         GF_tr = [graphs_fagi[i] for i in tr]; GF_te = [graphs_fagi[i] for i in te]
 
-        # GNN Baseline: no adversarial training, no GNNGuard
         mg = FAGIModel(in_dim=5, gnnguard_threshold=None)
         train_model(mg, GN_tr, 25, adv=False)
         pg_c = eval_model(mg, GN_te, adv=False)
         pg_a = eval_model(mg, GN_te, adv=True, eps=0.1, k=10)
 
-        # FAGI: adversarial training + GNNGuard
         mf = FAGIModel(in_dim=6, gnnguard_threshold=0.15)
         train_model(mf, GF_tr, 25, adv=True)
         pf_c = eval_model(mf, GF_te, adv=False, use_gnnguard=True)
@@ -137,7 +98,6 @@ def run_cicids_adversarial(data_path, n_folds=5):
         print(f"GNN {(pg_c==y_te).mean()*100:.1f}%/{(pg_a==y_te).mean()*100:.1f}%  "
               f"FAGI {(pf_c==y_te).mean()*100:.1f}%/{(pf_a==y_te).mean()*100:.1f}%")
 
-    # McNemar significance test
     chi2, p = mcnemar_test(
         np.array(all_y_te),
         np.array(all_gnn_adv),
@@ -154,10 +114,6 @@ def run_cicids_adversarial(data_path, n_folds=5):
 
 
 def run_graph_structure_attack(api_data_path):
-    """
-    Sub-experiment (b): Graph structure attack on API-native data.
-    Injects spurious edges at 40% and 80% of the existing edge count.
-    """
     print("\n[Exp 3b] Graph Structure Attack (Spurious Edge Injection)")
     print("=" * 50)
 

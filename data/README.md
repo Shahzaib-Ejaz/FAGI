@@ -26,9 +26,9 @@ Generate with:
 python data/synthetic/generator.py --output data/synthetic/sessions_final.json
 ```
 
-Or use the pre-generated file in `data/synthetic/sessions_final.json`.
+This is also the script's default output path.
 
-The dataset comprises **4,000 sessions** across 5 organisational nodes with
+The dataset comprises **4,000 sessions** across 5 organizational nodes with
 overlapping aggregate statistics (write_ratio: benign 0.354±0.145, attack 0.357±0.158)
 covering four attack types:
 
@@ -39,5 +39,5 @@ covering four attack types:
 | schema_recon | Systematic enumeration of all API endpoints | Orgs 1, 2, 4 |
 | sql_injection | SQL tokens in data_query parameters | Orgs 1, 3, 4 |
 
-Organisation 4 contains all four attack types and is used as the held-out
-test node in Experiment 4 (federated generalisation).
+Organization 4 contains all four attack types and is used as the held-out
+test node in Experiment 4 (federated generalization).

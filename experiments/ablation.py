@@ -1,35 +1,6 @@
-"""
-Ablation Study
-==============
-Quantifies each module's contribution to FAGI's performance.
-Reproduces Table I from the paper.
-
-Variants tested on CICIDS2017, 5-fold CV:
-
-  Variant          | Clean  | Adv    | DP
-  -----------------|--------|--------|----
-  FAGI (full)      | 75.6%  | 74.4%  | ✓
-  FAGI − LLM       | 74.1%  | 73.9%  | ✓
-  FAGI − GNNGuard  | 75.4%  | 68.9%  | ✓
-  FAGI − PGD       | 75.3%  | 67.2%  | ✓
-  FAGI − Federated | 76.1%  | 74.2%  | ✗
-  GNN Baseline     | 74.8%  | 67.2%  | ✗
-
-Note on FAGI−Federated > FAGI−GNNGuard (adversarial):
-  The DP-SGD gradient noise (σ=1.1) acts as implicit adversarial
-  regularisation, a phenomenon documented in prior DP-robustness work.
-  GNNGuard remains the primary robustness mechanism (−5.5pp when removed).
-
-Usage
------
-  python experiments/ablation.py \
-    --data_path data/cicids2017/ \
-    --n_folds 5 \
-    --output experiments/results/ablation.json
-"""
-
 import json
 import argparse
+import sys
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -63,7 +34,7 @@ ABLATION_CONFIGS = {
     },
     "FAGI − Federated": {
         "in_dim": 6, "gnnguard": 0.15,
-        "adv_train": True, "dp_noise": False,  # no DP = no federated
+        "adv_train": True, "dp_noise": False,
     },
     "GNN Baseline": {
         "in_dim": 5, "gnnguard": None,
@@ -126,24 +97,7 @@ def main():
         G5, G6, y = load_cicids2017_graphs(args.data_path)
         print(f"Loaded {len(y)} CICIDS2017 graphs.")
     except Exception as e:
-        print(f"Could not load CICIDS2017: {e}")
-        print("Returning stored paper results.")
-        stored = {
-            "FAGI (full)":      {"clean": 0.756, "adv": 0.744, "dp": True},
-            "FAGI − LLM":       {"clean": 0.741, "adv": 0.739, "dp": True},
-            "FAGI − GNNGuard":  {"clean": 0.754, "adv": 0.689, "dp": True},
-            "FAGI − PGD":       {"clean": 0.753, "adv": 0.672, "dp": True},
-            "FAGI − Federated": {"clean": 0.761, "adv": 0.742, "dp": False},
-            "GNN Baseline":     {"clean": 0.748, "adv": 0.672, "dp": False},
-        }
-        print(f"\n{'Variant':<22} {'Clean':>8} {'Adv':>8} {'DP':>5}")
-        print("-" * 48)
-        for name, r in stored.items():
-            print(f"{name:<22} {r['clean']*100:>7.1f}% {r['adv']*100:>7.1f}% "
-                  f"{'✓' if r['dp'] else '✗':>5}")
-        with open(args.output, "w") as f:
-            json.dump(stored, f, indent=2)
-        return
+        sys.exit(f"Could not load CICIDS2017 from {args.data_path}: {e}")
 
     skf = StratifiedKFold(args.n_folds, shuffle=True, random_state=42)
     results = {name: {"clean": [], "adv": []} for name in ABLATION_CONFIGS}

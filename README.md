@@ -7,7 +7,6 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue.svg)](https://python.org)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Paper](https://img.shields.io/badge/Paper-IEEE%20Format-green.svg)](paper/)
 
 ---
 
@@ -17,7 +16,7 @@ FAGI is a four-module framework for adversarially robust, privacy-preserving det
 
 1. **Signature systems** evaded trivially by zero-day and obfuscated attacks
 2. **Standalone ML detectors** achieving strong clean accuracy but collapsing under adversarial perturbation (vanilla GNN degrades 7.6pp under PGD)
-3. **Centralised training** legally and operationally infeasible for cross-organisational threat intelligence sharing
+3. **Centralized training** legally and operationally infeasible for cross-organizational threat intelligence sharing
 
 FAGI solves all three by unifying:
 
@@ -78,10 +77,13 @@ API Gateway Logs
 ## Installation
 
 ```bash
-git clone https://github.com/shahzaibejaz/FAGI.git
+git clone https://github.com/Shahzaib-Ejaz/FAGI.git
 cd FAGI
 pip install -r requirements.txt
+pip install -e .
 ```
+
+`pip install -e .` makes the `fagi` package importable, which the experiment scripts need.
 
 **Requirements:** Python 3.9+, PyTorch 2.0+, PyTorch Geometric, transformers, scikit-learn
 
@@ -90,7 +92,6 @@ pip install -r requirements.txt
 ```python
 from fagi import FAGIDetector
 
-# Initialise detector
 detector = FAGIDetector(
     hidden_dims=(64, 32),
     pgd_epsilon=0.1,
@@ -102,10 +103,7 @@ detector = FAGIDetector(
     dp_clip_norm=1.0,
 )
 
-# Train on API call graph sessions
 detector.fit(train_sessions, epochs=50)
-
-# Detect threats
 predictions = detector.predict(test_sessions)
 ```
 
@@ -114,48 +112,35 @@ predictions = detector.predict(test_sessions)
 ```
 FAGI/
 ├── fagi/                    # Core library
-│   ├── __init__.py
-│   ├── graph/               # API call graph construction
-│   │   ├── constructor.py   # APIGraphConstructor
-│   │   └── features.py      # Node feature extraction
-│   ├── model/               # GNN model + adversarial training
+│   ├── detector.py          # FAGIDetector high-level interface
+│   ├── graph/
+│   │   └── constructor.py   # APIGraphConstructor
+│   ├── model/
 │   │   ├── gnn.py           # GraphSAGE with GNNGuard
 │   │   ├── gnnguard.py      # Edge filtering
 │   │   └── pgd.py           # PGD adversarial training
-│   ├── privacy/             # Differential privacy
-│   │   ├── mvg_dp.py        # MVG mechanism
-│   │   └── accounting.py    # Rényi-DP accounting
-│   ├── federated/           # Federated learning
-│   │   ├── server.py        # FedAvg aggregation
+│   ├── privacy/
+│   │   └── mvg_dp.py        # MVG mechanism and RDP estimate
+│   ├── federated/
+│   │   ├── server.py        # FedAvg aggregation + Byzantine filter
 │   │   └── client.py        # Per-org local training
-│   └── utils/               # Helpers
-│       ├── embeddings.py    # DistilBERT wrapper
-│       └── metrics.py       # Evaluation metrics
-├── experiments/             # Reproducible experiment scripts
-│   ├── exp1_lateral_movement.py
-│   ├── exp2_llm_contribution.py
+│   └── utils/
+│       ├── embeddings.py    # DistilBERT wrapper and keyword scorer
+│       └── metrics.py       # Evaluation metrics, McNemar test
+├── experiments/
 │   ├── exp3_adversarial_robustness.py
-│   ├── exp4_federated.py
 │   ├── ablation.py
-│   └── results/             # Stored results (JSON)
-├── data/                    # Dataset utilities
-│   ├── cicids2017.py        # CICIDS2017 loader
-│   ├── synthetic/           # Synthetic API session generator
-│   │   ├── generator.py
-│   │   └── sessions_final.json
+│   └── results/
+│       └── paper_results.json
+├── data/
+│   ├── synthetic/
+│   │   └── generator.py     # Synthetic API session generator
 │   └── README.md
-├── scripts/                 # Training + inference entry points
-│   ├── train.py
-│   ├── evaluate.py
-│   └── generate_figures.py
-├── tests/                   # Unit tests
-│   ├── test_graph.py
-│   ├── test_gnn.py
-│   ├── test_privacy.py
-│   └── test_federated.py
-├── figures/                 # Reproduced paper figures
-├── docs/                    # Extended documentation
-│   └── architecture.md
+├── scripts/
+│   └── generate_figures.py  # Paper figures from paper_results.json
+├── figures/                 # Generated figures (PNG + PDF)
+├── tests/
+├── dashboard.html
 ├── requirements.txt
 ├── setup.py
 └── README.md
@@ -164,44 +149,36 @@ FAGI/
 ## Reproducing Paper Results
 
 ```bash
-# Experiment 1: Lateral movement detection
-python experiments/exp1_lateral_movement.py
+python data/synthetic/generator.py
 
-# Experiment 2: LLM payload contribution
-python experiments/exp2_llm_contribution.py
+python experiments/exp3_adversarial_robustness.py --data_path data/cicids2017/
 
-# Experiment 3: Adversarial robustness (primary result)
-python experiments/exp3_adversarial_robustness.py
+python experiments/ablation.py --data_path data/cicids2017/
 
-# Experiment 4: Federated generalisation
-python experiments/exp4_federated.py
-
-# Full ablation study
-python experiments/ablation.py
-
-# Regenerate all paper figures
 python scripts/generate_figures.py
 ```
 
-Expected outputs are stored in `experiments/results/` for comparison.
+`generate_figures.py` checks the numbers quoted in the paper captions against `experiments/results/paper_results.json` before plotting, and stops on any mismatch.
+
+The CICIDS2017 graph loader (`data/cicids2017.py`) and the scripts for the lateral-movement, payload, and federated experiments are not yet in this repository. Until they are added, `exp3_adversarial_robustness.py` and `ablation.py` exit with an error instead of producing results.
 
 ## Datasets
 
-**CICIDS2017** — Download from the [Canadian Institute for Cybersecurity](https://www.unb.ca/cic/datasets/ids-2017.html). Place the `Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv` file in `data/cicids2017/`.
+**CICIDS2017** — Download from the [Canadian Institute for Cybersecurity](https://www.unb.ca/cic/datasets/ids-2017.html) and place the CSV files in `data/cicids2017/`.
 
-**Synthetic API Session Dataset** — Generated by `data/synthetic/generator.py`. 4,000 sessions across 5 organisational nodes covering lateral movement, slow exfiltration, schema reconnaissance, and SQL injection attack types.
+**Synthetic API Session Dataset** — Generated by `data/synthetic/generator.py` (seed 42) into `data/synthetic/sessions_final.json`. 4,000 sessions across 5 organizational nodes covering lateral movement, slow exfiltration, schema reconnaissance, and SQL injection attack types.
 
 ## Citation
 
 ```bibtex
-@article{ejaz2026fagi,
+@misc{ejaz2026fagi,
   title={Adversarial Machine Learning for Cloud API Threat Detection:
          A Federated Learning Framework Bridging Software Engineering,
          Data Science, and Cybersecurity},
   author={Ejaz, Shahzaib},
-  journal={IEEE Workshop on Artificial Intelligence and Security (AISec)},
   year={2026},
-  institution={North American University}
+  note={Under review},
+  howpublished={\url{https://github.com/Shahzaib-Ejaz/FAGI}}
 }
 ```
 

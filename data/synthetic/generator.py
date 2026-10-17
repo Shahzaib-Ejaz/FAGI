@@ -1,33 +1,6 @@
-"""
-Synthetic API Call Session Generator
-=====================================
-Generates the 4,000-session dataset used in Section V-C of the paper.
-
-Design principles:
-1. All sessions have overlapping aggregate statistics (similar call counts,
-   write ratios, timing distributions) so that flow-level features cannot
-   trivially separate benign from malicious sessions.
-2. Attack patterns encode behavioural signals (call sequences, payload
-   patterns) that only graph-topology-aware or payload-aware detectors
-   can exploit.
-3. Five organisational nodes have heterogeneous attack coverage,
-   creating the data heterogeneity condition tested in Experiment 4.
-
-Distribution overlap (validated post-generation):
-  - write_ratio: benign 0.354±0.145, attack 0.357±0.158
-  - call_count:  benign 9.6±4.0,    attack 10.1±1.0
-
-Usage
------
-    python data/synthetic/generator.py --n_orgs 5 --output sessions_final.json
-
-Or from Python:
-    from data.synthetic.generator import generate_dataset
-    sessions = generate_dataset(n_per_org_benign=500)
-"""
-
 import argparse
 import json
+import os
 import random
 import numpy as np
 from typing import List, Dict
@@ -35,7 +8,6 @@ from typing import List, Dict
 random.seed(42)
 np.random.seed(42)
 
-# ── Endpoint definitions ──────────────────────────────────────────────
 ENDPOINTS = {
     "auth":         {"port": 443,  "priv": 0},
     "user_read":    {"port": 443,  "priv": 1},
@@ -57,19 +29,17 @@ NORMAL_POOL = [
     "user_write", "admin_read",
 ]
 
-# ── Per-organisation attack coverage ─────────────────────────────────
 ORG_ATTACKS = {
     0: ["lateral_movement", "slow_exfiltration"],
     1: ["schema_recon",     "sql_injection"],
     2: ["lateral_movement", "schema_recon"],
     3: ["slow_exfiltration","sql_injection"],
-    4: ["lateral_movement", "slow_exfiltration",  # all types (test org)
+    4: ["lateral_movement", "slow_exfiltration",
         "schema_recon",     "sql_injection"],
 }
 
 
 def _make_call(src: str, dst: str, atype: str = None) -> dict:
-    """Generate one API call with realistic timing and payload."""
     priv = ENDPOINTS[dst]["priv"]
     dur  = abs(np.random.normal(350 + priv * 60, 120))
     size = abs(np.random.normal(700 + priv * 150, 150))
@@ -177,26 +147,6 @@ def generate_dataset(
     org_attacks: dict = None,
     seed: int = 42,
 ) -> List[dict]:
-    """
-    Generate the full synthetic API call session dataset.
-
-    Parameters
-    ----------
-    n_per_org_benign : int
-        Number of benign sessions per organisation.
-    n_per_org_per_attack : int
-        Number of malicious sessions per (org, attack_type) pair.
-    org_attacks : dict, optional
-        Mapping of org_id → list of attack type names.
-        Default: ORG_ATTACKS (as in the paper).
-    seed : int
-        Random seed for reproducibility.
-
-    Returns
-    -------
-    list[dict]
-        Shuffled list of session dictionaries.
-    """
     random.seed(seed)
     np.random.seed(seed)
 
@@ -220,7 +170,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Generate synthetic API call session dataset"
     )
-    parser.add_argument("--output", default="sessions_final.json",
+    parser.add_argument("--output", default="data/synthetic/sessions_final.json",
                         help="Output JSON path")
     parser.add_argument("--n_benign", type=int, default=500,
                         help="Benign sessions per org")
@@ -236,6 +186,7 @@ def main():
         seed=args.seed,
     )
 
+    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     with open(args.output, "w") as f:
         json.dump(sessions, f, indent=2)
 

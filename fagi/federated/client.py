@@ -1,11 +1,3 @@
-"""
-Federated Client — Per-Organisation Local Training
-====================================================
-Each organisational node trains a local copy of the global model
-on its private API call graph data, then sends only the updated
-model weights (never raw logs) to the aggregation server.
-"""
-
 import copy
 import torch
 import torch.nn.functional as F
@@ -17,25 +9,6 @@ from fagi.privacy.mvg_dp import MVGMechanism
 
 
 class FederatedClient:
-    """
-    Local trainer for one federated organisational node.
-
-    Parameters
-    ----------
-    org_id : str
-        Organisation identifier (for logging).
-    local_data : list[Data]
-        Local API call graph dataset (private, never shared).
-    dp_mechanism : MVGMechanism, optional
-        If provided, applies DP noise after each gradient step.
-    adversarial_training : bool
-        Whether to use PGD adversarial training (recommended: True).
-    pgd_epsilon : float
-        PGD perturbation budget.
-    pgd_steps : int
-        PGD attack steps per training iteration.
-    """
-
     def __init__(
         self,
         org_id: str,
@@ -63,25 +36,6 @@ class FederatedClient:
         batch_size: int = 200,
         verbose: bool = False,
     ) -> torch.nn.Module:
-        """
-        Train a local copy of the global model on this node's private data.
-
-        Parameters
-        ----------
-        global_model : nn.Module
-            Current global model weights (downloaded from server).
-        epochs : int
-            Number of local training epochs.
-        batch_size : int
-            Number of graphs per gradient step.
-        verbose : bool
-            Print per-epoch loss.
-
-        Returns
-        -------
-        nn.Module
-            Locally fine-tuned model (sent back to server for aggregation).
-        """
         local_model = copy.deepcopy(global_model)
         optimizer = torch.optim.Adam(
             local_model.parameters(),
@@ -113,7 +67,6 @@ class FederatedClient:
 
                 loss.backward()
 
-                # Apply DP noise after backprop
                 if self.dp_mechanism is not None:
                     self.dp_mechanism.clip_and_noise(local_model)
                 else:
