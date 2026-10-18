@@ -97,24 +97,29 @@ def fig_privacy(r, out, dpi):
     nodp = [x for x in sw if x["sigma"] is None][0]
     dp.sort(key=lambda x: x["epsilon"]["mean"])
     xs = [x["epsilon"]["mean"] for x in dp]
-    fig, ax = plt.subplots(figsize=(3.5, 2.2))
+    fig, ax = plt.subplots(figsize=(3.5, 2.5))
     for field, name, c, mk, ls in [("clean", "Clean accuracy", C_BASE, "s", "-"),
-                                   ("worst_recall_eps0.1", "Attack recall, ε_adv=0.1", "#1baf7a", "^", ":"),
-                                   ("worst_recall_eps0.5", "Attack recall, ε_adv=0.5", C_FAGI, "o", "--")]:
+                                   ("worst_recall_eps0.1", "Attack recall, $\\epsilon_{adv}$=0.1", "#1baf7a", "^", ":"),
+                                   ("worst_recall_eps0.5", "Attack recall, $\\epsilon_{adv}$=0.5", C_FAGI, "o", "--")]:
         ys = [pct(x[field]["mean"]) for x in dp]
         es = [pct(x[field]["std"]) for x in dp]
         ax.errorbar(xs, ys, yerr=es, color=c, marker=mk, linestyle=ls, linewidth=1.3, markersize=3.8, capsize=1.5,
                     elinewidth=0.6, label=name)
-        ax.axhline(pct(nodp[field]["mean"]), color=c, linewidth=0.7, alpha=0.6, linestyle=(0, (1, 2)))
+        ax.axhline(pct(nodp[field]["mean"]), color=c, linewidth=0.7, alpha=0.7, linestyle=(0, (1, 2)))
     for x in dp:
-        ax.annotate(f"σ={x['sigma']}", (x["epsilon"]["mean"], pct(x["clean"]["mean"])), textcoords="offset points",
-                    xytext=(0, 5), ha="center", fontsize=5.4, color="#555555")
+        ax.annotate(f"σ={x['sigma']}", (x["epsilon"]["mean"], pct(x["worst_recall_eps0.5"]["mean"])),
+                    textcoords="offset points", xytext=(0, -14), ha="center", fontsize=5.6, color="#555555")
     ax.set_xscale("log")
+    ax.xaxis.set_minor_locator(NullLocator())
     ax.xaxis.set_minor_formatter(NullFormatter())
+    ticks = [0.5, 1, 2, 5, 10]
+    ax.set_xticks(ticks)
+    ax.set_xticklabels([str(t) for t in ticks])
+    ax.set_xlim(0.38, 20)
+    ax.set_ylim(40, 103)
     ax.set_xlabel("Privacy budget $\\epsilon_{DP}$ (δ = 10$^{-6}$)")
     ax.set_ylabel("%")
-    ax.legend(loc="lower right")
-    ax.text(0.01, 0.02, "dotted lines: same model without DP", transform=ax.transAxes, fontsize=5.4, color="#555555")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.2), ncol=2)
     save(fig, out, "fig3_privacy_utility.png", dpi)
 
 
