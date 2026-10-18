@@ -20,7 +20,7 @@ git clone https://github.com/Shahzaib-Ejaz/FAGI.git
 cd FAGI
 pip install -r requirements.txt     # or requirements-lock.txt for the exact versions used
 pip install -e .
-python -m pytest -q                 # 64 tests
+python -m pytest -q                 # 72 tests
 ```
 
 ## Quick start
@@ -37,7 +37,7 @@ print(det.epsilon)                    # computed by the RDP accountant, not a se
 pred = det.predict(sessions, adversarial=True)
 ```
 
-The privacy budget is an output, not an input: `FAGIDetector` takes the noise multiplier σ, clip norm and δ, and reports the ε that the accountant computes for the sampling rate and number of steps actually used.
+Pass `feature_scale=` (per-feature scales from public data) to keep the scaler's statistics out of the private data; otherwise they are fit on the training sessions and fall outside the DP guarantee. The privacy budget is an output, not an input: `FAGIDetector` takes the noise multiplier σ, clip norm and δ, and reports the ε that the accountant computes for the sampling rate and number of steps actually used.
 
 ## Reproducing the paper
 
@@ -45,23 +45,26 @@ The privacy budget is an output, not an input: `FAGIDetector` takes the noise mu
 bash scripts/run_all.sh
 ```
 
-This regenerates both synthetic datasets, runs every experiment, writes `experiments/results/*.json`, builds `paper_results.json`, the figures in `figures/`, and `dashboard.html`. Expected runtime is about 7 hours on a 2-core CPU. CICIDS2017 models are cached per (model, fold, seed) under `experiments/results/cache/`, keyed by a hash of the configuration and the core source files, so an interrupted run resumes where it stopped.
+This regenerates both synthetic datasets, runs every experiment, writes `experiments/results/*.json`, builds `paper_results.json`, the figures in `figures/`, and `dashboard.html`. Expected runtime is about 9 hours on a 2-core CPU. The published results were produced by running the same commands in chunks (per seed, then the aggregators), which is equivalent because every stage reads the shared cache. CICIDS2017 models are cached per (model, fold, seed) under `experiments/results/cache/`, keyed by a hash of the configuration and the core source files, so an interrupted run resumes where it stopped.
 
 | Script | What it produces |
 |---|---|
-| `experiments/cicids_compute.py` | Trains and attacks every CICIDS2017 model (cached) |
+| `experiments/cicids_compute.py` | Trains and attacks every CICIDS2017 model (cached, including weights); `--protocol temporal` for the time split |
 | `experiments/exp1_cicids_benchmark.py` | Clean accuracy, FPR, per-class recall with Wilson intervals, worst-case attack recall |
 | `experiments/exp3_adversarial_robustness.py` | Attack-budget sweep, per-attack breakdown, 100-step check; random edge injection on synthetic data |
 | `experiments/ablation.py` | Component ablation, σ sweep (privacy–utility), membership inference with an overfit positive control |
+| `experiments/mia_canary.py` | Canary audit: 200 label-flipped private flows per fold, half included; AUC with bootstrap CI and an empirical ε lower bound |
+| `experiments/exp5_temporal.py` | Temporal split: the earlier 70% of each day file trains, the later 30% tests |
 | `experiments/exp2_api_native.py` | Synthetic API sessions: all attacks, lateral movement, SQL injection; payload-feature ablation |
 | `experiments/exp4_federated.py` | Held-out organization, FedAvg with and without client-side DP-SGD, ε-matched centralized DP, membership inference |
 
 ### Evaluation protocol in brief
 
 * **CICIDS2017**: all 8 day files, cleaned (non-finite rows, exact duplicates, constant and duplicated columns removed; mis-encoded Web Attack labels fixed), then a stratified sample of up to 3,000 flows per attack label plus an equal number of benign flows. 5-fold CV stratified on the original label, 3 seeds per fold. Each training fold is split into a **private training set** (what DP protects) and a **reference pool** that supplies graph neighbors at training and inference time; no private record ever appears in another record's graph.
-* **Attacks** target malicious flows only. Graph models face PGD on a fixed neighborhood, PGD followed by neighbor re-retrieval, an adaptive PGD that re-retrieves neighbors at every step, and a nearest-benign mimicry attack; flat models face white-box PGD and mimicry; the random forest and k-NN face transfer (from the MLP) and mimicry. A flow counts as detected only if it survives every attack run against that model.
+* **Attacks** target 2,000 malicious test flows per fold (the same flows for every model); benign flows are left unperturbed. Every model is attacked through its own inference path (neighbor retrieval included) with: best-of-32 benign mimicry; its own white-box attack where it has gradients (adaptive PGD that re-retrieves neighbors at every step, with 2 restarts and best-iterate tracking, plus PGD followed by re-retrieval, for graph models; PGD for flat models); and transfer of the MLP's PGD examples and the GNN's adaptive examples. A flow counts as detected only if it survives every attack. PGD on a fixed neighborhood is reported separately and excluded from the worst case. A 100-step adaptive check runs on seed 0.
+* **Temporal protocol**: within each day file, rows follow flow completion order; the earlier 70% (split into private set and pool) trains and the later 30% tests.
 * **Privacy**: δ = 10⁻⁶. Hyperparameters were fixed in advance and not tuned on the evaluation data.
-* **Synthetic API sessions**: `data/synthetic/generator.py` (original) and `--difficulty hard`, where some benign users send admin, export or SQL-like requests and half of attack calls carry ordinary payloads. Features are divided by fixed per-feature scales computed once from a public calibration sample (generator seed 7, never used for evaluation), so no statistics are fit on private or test data.
+* **Synthetic API sessions**: `data/synthetic/generator.py` (original) and `--difficulty hard`, where some benign users send admin, export or SQL-like requests and half of attack calls carry ordinary payloads. Features are divided by fixed per-feature scales computed once from a public calibration sample (the original generator with seed 7, never used for evaluation, and applied to both the original and the hard data), so no statistics are fit on private or test data.
 
 ## Datasets
 
@@ -77,7 +80,7 @@ fagi/
   training.py           training loop: plain, PGD, DP-SGD; seeded and reproducible
   privacy/dp_sgd.py     DP-SGD optimizer and RDP accountant
   graph/                API-session graph construction (sparse and dense)
-  federated/server.py   FedAvg aggregation
+  federated/server.py   FedAvg aggregation (the optional 3σ filter is off by default)
   detector.py           FAGIDetector high-level API
   model/gnn.py, model/pgd.py, model/gnnguard.py, federated/client.py, privacy/mvg_dp.py
                         legacy PyTorch Geometric reference code, kept for the tests; not used by the

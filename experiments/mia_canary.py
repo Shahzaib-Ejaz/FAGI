@@ -5,6 +5,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import numpy as np
+from scipy.stats import beta
 from sklearn.metrics import roc_auc_score
 
 from cicids_folds import CONFIG, GRAPH_VARIANTS, CICIDSFolds
@@ -13,6 +14,40 @@ from common import DenseFAGI, env_info, per_sample_loss, save_json, train_model
 
 N_CANARY = 200
 MODELS = ["gnn", "fagi_no_dp", "fagi"]
+
+
+def clopper_pearson(k, n, alpha=0.05):
+    lo = 0.0 if k == 0 else float(beta.ppf(alpha / 2, k, n - k + 1))
+    hi = 1.0 if k == n else float(beta.ppf(1 - alpha / 2, k + 1, n - k))
+    return lo, hi
+
+
+def empirical_eps_lower_bound(loss_in, loss_out, delta):
+    s_in, s_out = -np.asarray(loss_in), -np.asarray(loss_out)
+    n_in, n_out = len(s_in), len(s_out)
+    best = 0.0
+    for t in np.unique(np.concatenate([s_in, s_out])):
+        tp, fp = int((s_in >= t).sum()), int((s_out >= t).sum())
+        tpr_lo, _ = clopper_pearson(tp, n_in)
+        _, fpr_hi = clopper_pearson(fp, n_out)
+        if fpr_hi > 0 and tpr_lo - delta > 0:
+            best = max(best, float(np.log((tpr_lo - delta) / fpr_hi)))
+        tnr_lo, _ = clopper_pearson(n_out - fp, n_out)
+        _, fnr_hi = clopper_pearson(n_in - tp, n_in)
+        if fnr_hi > 0 and tnr_lo - delta > 0:
+            best = max(best, float(np.log((tnr_lo - delta) / fnr_hi)))
+    return best
+
+
+def bootstrap_auc(loss_in, loss_out, n_boot=1000, seed=0):
+    rng = np.random.RandomState(seed)
+    li, lo = np.asarray(loss_in), np.asarray(loss_out)
+    vals = []
+    for _ in range(n_boot):
+        a = rng.choice(li, len(li), replace=True)
+        b = rng.choice(lo, len(lo), replace=True)
+        vals.append(roc_auc_score(np.r_[np.ones(len(a)), np.zeros(len(b))], -np.r_[a, b]))
+    return float(np.percentile(vals, 2.5)), float(np.percentile(vals, 97.5))
 
 
 def run_fold(folds, f):
@@ -60,11 +95,13 @@ def main():
         li = np.concatenate([p[name]["loss_in"] for p in per_fold])
         lo = np.concatenate([p[name]["loss_out"] for p in per_fold])
         pooled = float(roc_auc_score(np.r_[np.ones(len(li)), np.zeros(len(lo))], -np.r_[li, lo]))
-        summary[name] = {"auc_pooled": pooled, "auc_per_fold": ms([p[name]["auc"] for p in per_fold]),
+        summary[name] = {"auc_pooled": pooled, "auc_pooled_ci95": bootstrap_auc(li, lo),
+                         "empirical_eps_lower_bound": empirical_eps_lower_bound(li, lo, CONFIG["dp_delta"]),
+                         "auc_per_fold": ms([p[name]["auc"] for p in per_fold]),
                          "fit_rate_in": ms([p[name]["canary_fit_rate_in"] for p in per_fold]),
                          "fit_rate_out": ms([p[name]["canary_fit_rate_out"] for p in per_fold]),
                          "epsilon": per_fold[0][name]["epsilon"], "n_in": int(len(li)), "n_out": int(len(lo))}
-        print(f"  {name:<11} pooled AUC={pooled:.3f}  in-fit={summary[name]['fit_rate_in']['mean']:.2f}  "
+        print(f"  {name:<11} pooled AUC={pooled:.3f} CI={summary[name]['auc_pooled_ci95']}  eps_lb={summary[name]['empirical_eps_lower_bound']:.3f}  in-fit={summary[name]['fit_rate_in']['mean']:.2f}  "
               f"out-fit={summary[name]['fit_rate_out']['mean']:.2f}")
     save_json({"config": CONFIG, "config_hash": folds.hash, "env": env_info(), "n_canary_per_fold": N_CANARY,
                "summary": summary}, args.output)

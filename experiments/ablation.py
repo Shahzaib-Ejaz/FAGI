@@ -30,22 +30,28 @@ def cicids(data_path):
         for s in [0]:
             for _, k in CICIDS_ROWS:
                 b = folds.result(k, f, s)
+                w = folds.worst_detected(k, f, s)
                 m = metrics(d["yte"], b["pred_clean"])
                 r = res[k]
                 r["clean"].append(m["accuracy"]); r["fpr"].append(m["fpr"]); r["eps"].append(b["info"].get("epsilon"))
-                r["w01"].append(float(b["worst_detected"]["0.1"].mean()))
-                r["w05"].append(float(b["worst_detected"]["0.5"].mean()))
+                r["w01"].append(float(w["0.1"].mean()))
+                r["w05"].append(float(w["0.5"].mean()))
         for k in sig:
             b = folds.result(k, f, 0)
+            w = folds.worst_detected(k, f, 0)
             sig[k]["clean"].append(float(np.mean(b["pred_clean"] == d["yte"])))
-            sig[k]["w01"].append(float(b["worst_detected"]["0.1"].mean()))
-            sig[k]["w05"].append(float(b["worst_detected"]["0.5"].mean()))
+            sig[k]["w01"].append(float(w["0.1"].mean()))
+            sig[k]["w05"].append(float(w["0.5"].mean()))
             sig[k]["eps"].append(b["info"].get("epsilon"))
         for k in MIA_MODELS:
             b = folds.result(k, f, 0)
             mm = b["mia"]
-            mia[k].append(mia_report(mm["loss_members"], mm["loss_nonmembers"], mm["labels_members"],
-                                     d["labels_te"], seed=f))
+            rep = mia_report(mm["loss_members"], mm["loss_nonmembers"], mm["labels_members"], d["labels_te"], seed=f)
+            rep["median_loss_members"] = float(np.median(mm["loss_members"]))
+            rep["median_loss_nonmembers"] = float(np.median(mm["loss_nonmembers"]))
+            rep["mean_loss_members"] = float(np.mean(mm["loss_members"]))
+            rep["mean_loss_nonmembers"] = float(np.mean(mm["loss_nonmembers"]))
+            mia[k].append(rep)
         print(f"  fold {f + 1}: " + "  ".join(f"{k}={res[k]['clean'][-1]:.4f}/{res[k]['w05'][-1]:.3f}"
                                               for _, k in CICIDS_ROWS), flush=True)
     rows = []
@@ -63,7 +69,9 @@ def cicids(data_path):
     mia_out = {}
     for k, lst in mia.items():
         mia_out[k] = {f: ms([x[f] for x in lst]) for f in ["auc", "attack_accuracy", "tpr_at_1pct_fpr",
-                                                            "tpr_at_0.1pct_fpr", "max_per_class_auc"]}
+                                                            "tpr_at_0.1pct_fpr", "max_per_class_auc",
+                                                            "median_loss_members", "median_loss_nonmembers",
+                                                            "mean_loss_members", "mean_loss_nonmembers"]}
     tests = {"fagi_vs_no_dp_clean": paired(res["fagi"]["clean"], res["fagi_no_dp"]["clean"]),
              "fagi_vs_no_pgd_w05": paired(res["fagi"]["w05"], res["fagi_no_pgd"]["w05"]),
              "fagi_vs_no_guard_w05": paired(res["fagi"]["w05"], res["fagi_no_guard"]["w05"]),

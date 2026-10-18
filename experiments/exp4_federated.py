@@ -89,18 +89,23 @@ def run_repeat(D, r):
                            **kwargs(dp, seed + len(name), ROUNDS * LOCAL_EPOCHS, sigma))
         finish(name, m, info.get("epsilon"), {"sigma": sigma if sigma else (SYN_CONFIG["dp_sigma"] if dp else None)})
 
-    for dp in (False, True):
+    for name, dp, persist in [("fedavg_nodp", False, True), ("fedavg_dp", True, True), ("fedavg_dp_reset_optimizer", True, False)]:
         set_seed(seed + 10)
         server = FederatedServer(make_model(d), dp_mechanism=None, byzantine_threshold=float("inf"))
         steps = {o: 0 for o in TRAIN_ORGS}
         rates = {}
         last_locals = {}
+        opt_states = {o: None for o in TRAIN_ORGS}
         for rnd in range(ROUNDS):
             locals_, weights = [], []
             for o in TRAIN_ORGS:
                 lm = copy.deepcopy(server.global_model)
                 info = train_model(lm, X[members[o]], D.A[members[o]], D.y[members[o]], node_mask=D.M[members[o]],
-                                   reinit=False, **kwargs(dp, seed * 1000 + rnd * 10 + o, LOCAL_EPOCHS))
+                                   reinit=False, optimizer_state=opt_states[o] if persist else None,
+                                   return_optimizer_state=persist,
+                                   **kwargs(dp, seed * 1000 + rnd * 10 + o, LOCAL_EPOCHS))
+                if persist:
+                    opt_states[o] = info["optimizer_state"]
                 if dp:
                     steps[o] += info["steps"]
                     rates[o] = info["sample_rate"]
@@ -115,19 +120,22 @@ def run_repeat(D, r):
             lm_ = per_sample_loss(last_locals[o], X[members[o]], D.A[members[o]], D.y[members[o]])
             ln_ = per_sample_loss(last_locals[o], X[nonmembers[o]], D.A[nonmembers[o]], D.y[nonmembers[o]])
             client_mia.append(mia_report(lm_, ln_, seed=seed + o))
-        finish("fedavg_dp" if dp else "fedavg_nodp", server.global_model, eps,
+        finish(name, server.global_model, eps,
                {"client_model_mia_auc_mean": float(np.mean([c["auc"] for c in client_mia])),
-                "client_model_mia_tpr1_mean": float(np.mean([c["tpr_at_1pct_fpr"] for c in client_mia]))})
+                "client_model_mia_tpr1_mean": float(np.mean([c["tpr_at_1pct_fpr"] for c in client_mia])),
+                "optimizer_state_persistent": persist})
 
     for dp in (False, True):
-        accs = []
+        accs, epss = [], []
         for o in TRAIN_ORGS:
             m = make_model(d)
-            train_model(m, X[members[o]], D.A[members[o]], D.y[members[o]], node_mask=D.M[members[o]],
-                        **kwargs(dp, seed + 20 + o + (50 if dp else 0), ROUNDS * LOCAL_EPOCHS))
+            info = train_model(m, X[members[o]], D.A[members[o]], D.y[members[o]], node_mask=D.M[members[o]],
+                               **kwargs(dp, seed + 20 + o + (50 if dp else 0), ROUNDS * LOCAL_EPOCHS))
             accs.append(metrics(D.y[test], predict(m, X[test], D.A[test]))["accuracy"])
+            epss.append(info.get("epsilon"))
         out["local_dp_mean" if dp else "local_only_mean"] = {"test": {"accuracy": float(np.mean(accs))},
-                                                             "per_org": accs, "epsilon": eps_client if dp else None}
+                                                             "per_org": accs,
+                                                             "epsilon": max(epss) if dp else None}
 
     rng = np.random.RandomState(seed)
     small = rng.choice(mem_all, OVERFIT_N, replace=False)

@@ -25,6 +25,7 @@ class FAGIDetector:
         lr: float = 2e-3,
         batch_size: int = 32,
         seed: int = 0,
+        feature_scale: Optional[np.ndarray] = None,
         device: str = "cpu",
     ):
         self.hidden_dims = hidden_dims
@@ -40,6 +41,7 @@ class FAGIDetector:
         self.lr = lr
         self.batch_size = batch_size
         self.seed = seed
+        self.feature_scale = None if feature_scale is None else np.asarray(feature_scale, dtype=np.float32)
         self.device = device
         self.feature_dim = 6 if include_payload else 5
         self.model = DenseFAGI(self.feature_dim, hidden_dims=hidden_dims,
@@ -60,7 +62,11 @@ class FAGIDetector:
         if not sessions:
             raise ValueError("fit() needs at least one session")
         X, A, M, y = self._dense(sessions)
-        self.scaler = NodeFeatureScaler().fit(X, M)
+        self.scaler = NodeFeatureScaler()
+        if self.feature_scale is not None:
+            self.scaler.scale_ = self.feature_scale[: X.shape[-1]]
+        else:
+            self.scaler.fit(X, M)
         self.train_info = train_model(
             self.model, self.scaler.transform(X), A, y, node_mask=M, epochs=epochs,
             batch_size=self.batch_size, lr=self.lr, adv=self.use_adversarial_training, dp=self.use_dp,

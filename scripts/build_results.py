@@ -16,6 +16,7 @@ FILES = {
     "exp1": "exp1.json", "exp2": "exp2.json", "exp2_hard": "exp2_hard.json", "exp3": "exp3.json",
     "exp4": "exp4.json", "exp4_hard": "exp4_hard.json",
     "ablation": "ablation.json", "ablation_hard": "ablation_hard.json", "mia_canary": "mia_canary.json",
+    "exp5_temporal": "exp5_temporal.json",
 }
 
 

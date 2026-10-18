@@ -115,7 +115,8 @@ def load_cicids2017(
     data_path: str = "data/cicids2017/",
     per_class_cap: int = 1000,
     seed: int = 42,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[str], Dict]:
+    return_source: bool = False,
+):
     df, meta = load_clean_flows(data_path)
     sample = stratified_sample(df, per_class_cap, seed)
     feats = meta["features"]
@@ -127,6 +128,8 @@ def load_cicids2017(
     meta["sample_seed"] = seed
     meta["sample_rows"] = int(len(sample))
     meta["sample_label_counts"] = {k: int(v) for k, v in pd.Series(labels).value_counts().items()}
+    if return_source:
+        return X, y, labels, feats, meta, sample["source_file"].to_numpy()
     return X, y, labels, feats, meta
 
 

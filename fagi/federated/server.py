@@ -10,7 +10,7 @@ class FederatedServer:
         self,
         global_model: nn.Module,
         dp_mechanism=None,
-        byzantine_threshold: float = 3.0,
+        byzantine_threshold: Optional[float] = None,
     ):
         self.global_model = global_model
         self.dp_mechanism = dp_mechanism
@@ -62,7 +62,7 @@ class FederatedServer:
         models: List[nn.Module],
         weights: List[float],
     ):
-        if len(models) < 3:
+        if self.byzantine_threshold is None or len(models) < 3:
             return models, weights
 
         param_vectors = []

@@ -57,6 +57,8 @@ def train_model(
     pgd_steps: int = PGD_TRAIN_STEPS,
     lambda_adv: float = 0.5,
     reinit: bool = True,
+    optimizer_state: Optional[Dict] = None,
+    return_optimizer_state: bool = False,
 ) -> Dict:
     gen = set_seed(seed)
     if reinit:
@@ -68,6 +70,8 @@ def train_model(
     if dp:
         opt = DPSGD(model, n, batch_size, sigma=sigma, clip_norm=clip, lr=lr,
                     weight_decay=weight_decay, delta=delta, generator=gen)
+        if optimizer_state is not None:
+            opt.optimizer.load_state_dict(optimizer_state)
         loss_fn = make_graph_loss(model, lambda_adv if adv else None)
         n_steps = int(np.ceil(epochs / opt.sample_rate))
         for _ in range(n_steps):
@@ -87,8 +91,12 @@ def train_model(
             opt.apply(opt.clipped_noisy_grad(pg))
         info = {"dp": True, "sigma": sigma, "clip": clip, "delta": delta,
                 "sample_rate": opt.sample_rate, "steps": opt.steps, "epsilon": opt.epsilon()}
+        if return_optimizer_state:
+            info["optimizer_state"] = opt.optimizer.state_dict()
     else:
         optim = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+        if optimizer_state is not None:
+            optim.load_state_dict(optimizer_state)
         for _ in range(epochs):
             perm = torch.randperm(n, generator=gen)
             for s in range(0, n, batch_size):
@@ -105,6 +113,8 @@ def train_model(
                 loss.backward()
                 optim.step()
         info = {"dp": False, "epsilon": None}
+        if return_optimizer_state:
+            info["optimizer_state"] = optim.state_dict()
     info["train_seconds"] = round(time.time() - t0, 1)
     model.eval()
     return info
