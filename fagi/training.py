@@ -27,6 +27,12 @@ def set_seed(seed: int) -> torch.Generator:
     return g
 
 
+def reset_parameters(model: nn.Module) -> None:
+    for module in model.modules():
+        if module is not model and hasattr(module, "reset_parameters"):
+            module.reset_parameters()
+
+
 def T(a, dtype=torch.float32):
     return torch.as_tensor(a, dtype=dtype)
 
@@ -50,8 +56,11 @@ def train_model(
     pgd_eps: float = PGD_EPS,
     pgd_steps: int = PGD_TRAIN_STEPS,
     lambda_adv: float = 0.5,
+    reinit: bool = True,
 ) -> Dict:
     gen = set_seed(seed)
+    if reinit:
+        reset_parameters(model)
     Xt, At, Yt = T(X), T(A), T(Y, torch.long)
     Mt = T(node_mask) if node_mask is not None else None
     n = len(Yt)

@@ -21,6 +21,7 @@ SYN_CONFIG = {
     "dp_sigma": 1.1,
     "dp_clip": 1.0,
     "dp_delta": 1e-5,
+    "init": "reset_after_seed",
 }
 
 SYN_VARIANTS = {

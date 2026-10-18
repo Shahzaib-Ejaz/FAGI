@@ -100,7 +100,7 @@ def run_repeat(D, r):
             for o in TRAIN_ORGS:
                 lm = copy.deepcopy(server.global_model)
                 info = train_model(lm, Xm[o], D.A[members[o]], D.y[members[o]], node_mask=D.M[members[o]],
-                                   **train_kwargs(dp, seed * 1000 + rnd * 10 + o, LOCAL_EPOCHS))
+                                   **train_kwargs(dp, seed * 1000 + rnd * 10 + o, LOCAL_EPOCHS), reinit=False)
                 if dp:
                     steps[o] += info["steps"]
                     rates[o] = info["sample_rate"]
