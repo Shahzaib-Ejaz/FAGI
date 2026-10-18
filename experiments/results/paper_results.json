@@ -1,53 +1,1183 @@
 {
+  "provenance": {
+    "dataset_archive": {
+      "name": "CICIDS2017 MachineLearningCSV.zip (MachineLearningCVE/, 8 day files)",
+      "source": "Canadian Institute for Cybersecurity, https://www.unb.ca/cic/datasets/ids-2017.html",
+      "sha256": "c3f26274b36c837ccf28ffd2dbf4582941c30b3ee70a635c6e5b2f87c4727928",
+      "md5": "4f83860afbf29cac8163854095bf6cf7"
+    },
+    "cicids_config": {
+      "per_class_cap": 3000,
+      "sample_seed": 42,
+      "n_folds": 5,
+      "cv_seed": 42,
+      "k": 8,
+      "k_inner": 3,
+      "epochs": 20,
+      "batch_size": 256,
+      "lr": 0.002,
+      "gnnguard_tau": 0.15,
+      "pgd_eps": 0.1,
+      "pgd_train_steps": 10,
+      "pgd_eval_steps": 20,
+      "dp_sigma": 1.1,
+      "dp_clip": 1.0,
+      "dp_delta": 1e-05,
+      "init": "reset_after_seed"
+    },
+    "cicids_config_hash": "c623856e51",
+    "synthetic_config": {
+      "n_folds": 5,
+      "cv_seed": 42,
+      "epochs": 30,
+      "batch_size": 32,
+      "lr": 0.002,
+      "gnnguard_tau": 0.15,
+      "pgd_eps": 0.1,
+      "pgd_train_steps": 10,
+      "pgd_eval_steps": 20,
+      "dp_sigma": 1.1,
+      "dp_clip": 1.0,
+      "dp_delta": 1e-05,
+      "init": "reset_after_seed"
+    },
+    "env": {
+      "python": "3.13.16",
+      "torch": "2.14.1+cu130",
+      "numpy": "2.5.3",
+      "sklearn": "1.9.1",
+      "threads": 2
+    },
+    "generated_by": "scripts/run_all.sh -> scripts/build_results.py"
+  },
   "cicids2017": {
+    "dataset": {
+      "files": [
+        "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv",
+        "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv",
+        "Friday-WorkingHours-Morning.pcap_ISCX.csv",
+        "Monday-WorkingHours.pcap_ISCX.csv",
+        "Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv",
+        "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv",
+        "Tuesday-WorkingHours.pcap_ISCX.csv",
+        "Wednesday-workingHours.pcap_ISCX.csv"
+      ],
+      "raw_rows": 2830743,
+      "raw_label_counts": {
+        "BENIGN": 2273097,
+        "DoS Hulk": 231073,
+        "PortScan": 158930,
+        "DDoS": 128027,
+        "DoS GoldenEye": 10293,
+        "FTP-Patator": 7938,
+        "SSH-Patator": 5897,
+        "DoS slowloris": 5796,
+        "DoS Slowhttptest": 5499,
+        "Bot": 1966,
+        "Web Attack - Brute Force": 1507,
+        "Web Attack - XSS": 652,
+        "Infiltration": 36,
+        "Web Attack - Sql Injection": 21,
+        "Heartbleed": 11
+      },
+      "dropped_nonfinite": 2867,
+      "dropped_duplicates": 307078,
+      "rows_with_conflicting_labels": 1394,
+      "dropped_constant_features": [
+        "Bwd PSH Flags",
+        "Bwd URG Flags",
+        "Fwd Avg Bytes/Bulk",
+        "Fwd Avg Packets/Bulk",
+        "Fwd Avg Bulk Rate",
+        "Bwd Avg Bytes/Bulk",
+        "Bwd Avg Packets/Bulk",
+        "Bwd Avg Bulk Rate"
+      ],
+      "clean_rows": 2520798,
+      "clean_label_counts": {
+        "BENIGN": 2095057,
+        "DoS Hulk": 172846,
+        "DDoS": 128014,
+        "PortScan": 90694,
+        "DoS GoldenEye": 10286,
+        "FTP-Patator": 5931,
+        "DoS slowloris": 5385,
+        "DoS Slowhttptest": 5228,
+        "SSH-Patator": 3219,
+        "Bot": 1948,
+        "Web Attack - Brute Force": 1470,
+        "Web Attack - XSS": 652,
+        "Infiltration": 36,
+        "Web Attack - Sql Injection": 21,
+        "Heartbleed": 11
+      },
+      "sample_per_class_cap": 3000,
+      "sample_seed": 42,
+      "sample_rows": 56276,
+      "sample_label_counts": {
+        "BENIGN": 28138,
+        "DDoS": 3000,
+        "PortScan": 3000,
+        "FTP-Patator": 3000,
+        "SSH-Patator": 3000,
+        "DoS slowloris": 3000,
+        "DoS Slowhttptest": 3000,
+        "DoS Hulk": 3000,
+        "DoS GoldenEye": 3000,
+        "Bot": 1948,
+        "Web Attack - Brute Force": 1470,
+        "Web Attack - XSS": 652,
+        "Infiltration": 36,
+        "Web Attack - Sql Injection": 21,
+        "Heartbleed": 11
+      }
+    },
+    "n_features": 69,
     "baselines": [
-      {"name": "Signature IDS",  "clean": 0.268, "adv": null,  "fpr": 0.400, "dp": false},
-      {"name": "Random Forest",  "clean": 0.966, "adv": null,  "fpr": 0.012, "dp": false},
-      {"name": "LSTM Network",   "clean": 0.843, "adv": null,  "fpr": 0.038, "dp": false},
-      {"name": "CNN on Features","clean": 0.951, "adv": null,  "fpr": 0.021, "dp": false},
-      {"name": "GNN Baseline",   "clean": 0.748, "adv": 0.672, "fpr": 0.049, "dp": false},
-      {"name": "FAGI",           "clean": 0.756, "adv": 0.744, "fpr": 0.031, "dp": true,
-       "clean_std": 0.017, "adv_std": 0.012}
+      {
+        "name": "Random Forest",
+        "key": "rf",
+        "clean": 0.9976,
+        "clean_std": 0.0002,
+        "adv": null,
+        "adv_std": null,
+        "fpr": 0.0019,
+        "detection_rate": 0.997,
+        "f1": 0.9976,
+        "dp": false,
+        "epsilon": null
+      },
+      {
+        "name": "MLP",
+        "key": "mlp",
+        "clean": 0.9894,
+        "clean_std": 0.0022,
+        "adv": 0.697,
+        "adv_std": 0.036,
+        "fpr": 0.0113,
+        "detection_rate": 0.99,
+        "f1": 0.9894,
+        "dp": false,
+        "epsilon": null
+      },
+      {
+        "name": "1D-CNN",
+        "key": "cnn",
+        "clean": 0.9911,
+        "clean_std": 0.0022,
+        "adv": 0.4481,
+        "adv_std": 0.0522,
+        "fpr": 0.014,
+        "detection_rate": 0.9963,
+        "f1": 0.9912,
+        "dp": false,
+        "epsilon": null
+      },
+      {
+        "name": "LSTM",
+        "key": "lstm",
+        "clean": 0.8844,
+        "clean_std": 0.0455,
+        "adv": 0.4637,
+        "adv_std": 0.0752,
+        "fpr": 0.1562,
+        "detection_rate": 0.9251,
+        "f1": 0.8901,
+        "dp": false,
+        "epsilon": null
+      },
+      {
+        "name": "GNN Baseline",
+        "key": "gnn",
+        "clean": 0.988,
+        "clean_std": 0.0014,
+        "adv": 0.9745,
+        "adv_std": 0.0045,
+        "fpr": 0.0176,
+        "detection_rate": 0.9937,
+        "f1": 0.9881,
+        "dp": false,
+        "epsilon": null
+      },
+      {
+        "name": "FAGI",
+        "key": "fagi",
+        "clean": 0.9743,
+        "clean_std": 0.0028,
+        "adv": 0.9672,
+        "adv_std": 0.0017,
+        "fpr": 0.0239,
+        "detection_rate": 0.9724,
+        "f1": 0.9742,
+        "dp": true,
+        "epsilon": 1.7154
+      }
     ],
+    "per_class_detection": {
+      "rf": {
+        "BENIGN": 0.9981164261852299,
+        "Bot": 0.9851129363449692,
+        "DDoS": 0.9976666666666667,
+        "DoS GoldenEye": 0.9993333333333333,
+        "DoS Hulk": 0.9963333333333333,
+        "DoS Slowhttptest": 1.0,
+        "DoS slowloris": 0.998,
+        "FTP-Patator": 1.0,
+        "Heartbleed": 1.0,
+        "Infiltration": 0.7222222222222222,
+        "PortScan": 0.9966666666666667,
+        "SSH-Patator": 0.9993333333333333,
+        "Web Attack - Brute Force": 0.9979591836734694,
+        "Web Attack - Sql Injection": 1.0,
+        "Web Attack - XSS": 0.9938650306748467
+      },
+      "mlp": {
+        "BENIGN": 0.9887340962399602,
+        "Bot": 0.8891170431211499,
+        "DDoS": 0.9983333333333333,
+        "DoS GoldenEye": 0.999,
+        "DoS Hulk": 0.9936666666666667,
+        "DoS Slowhttptest": 0.9996666666666667,
+        "DoS slowloris": 0.9986666666666667,
+        "FTP-Patator": 1.0,
+        "Heartbleed": 0.9090909090909091,
+        "Infiltration": 0.75,
+        "PortScan": 0.9996666666666667,
+        "SSH-Patator": 0.9993333333333333,
+        "Web Attack - Brute Force": 0.9979591836734694,
+        "Web Attack - Sql Injection": 0.9523809523809523,
+        "Web Attack - XSS": 0.9754601226993865
+      },
+      "cnn": {
+        "BENIGN": 0.9859975833392565,
+        "Bot": 0.9774127310061602,
+        "DDoS": 0.9993333333333333,
+        "DoS GoldenEye": 0.999,
+        "DoS Hulk": 0.9946666666666667,
+        "DoS Slowhttptest": 0.9986666666666667,
+        "DoS slowloris": 0.999,
+        "FTP-Patator": 1.0,
+        "Heartbleed": 0.9090909090909091,
+        "Infiltration": 0.6944444444444444,
+        "PortScan": 0.9996666666666667,
+        "SSH-Patator": 0.9983333333333333,
+        "Web Attack - Brute Force": 0.9972789115646259,
+        "Web Attack - Sql Injection": 0.9523809523809523,
+        "Web Attack - XSS": 0.9846625766871165
+      },
+      "lstm": {
+        "BENIGN": 0.8438055298884072,
+        "Bot": 0.7566735112936345,
+        "DDoS": 0.9373333333333334,
+        "DoS GoldenEye": 0.8946666666666667,
+        "DoS Hulk": 0.9,
+        "DoS Slowhttptest": 0.9083333333333333,
+        "DoS slowloris": 0.9583333333333334,
+        "FTP-Patator": 0.9663333333333334,
+        "Heartbleed": 0.7272727272727273,
+        "Infiltration": 0.5,
+        "PortScan": 0.9806666666666667,
+        "SSH-Patator": 0.9576666666666667,
+        "Web Attack - Brute Force": 0.9360544217687075,
+        "Web Attack - Sql Injection": 0.6666666666666666,
+        "Web Attack - XSS": 0.9662576687116564
+      },
+      "gnn": {
+        "BENIGN": 0.9824081313526193,
+        "Bot": 0.9450718685831622,
+        "DDoS": 0.998,
+        "DoS GoldenEye": 0.9966666666666667,
+        "DoS Hulk": 0.9953333333333333,
+        "DoS Slowhttptest": 0.999,
+        "DoS slowloris": 0.9986666666666667,
+        "FTP-Patator": 1.0,
+        "Heartbleed": 1.0,
+        "Infiltration": 0.75,
+        "PortScan": 0.9996666666666667,
+        "SSH-Patator": 0.9996666666666667,
+        "Web Attack - Brute Force": 0.9938775510204082,
+        "Web Attack - Sql Injection": 1.0,
+        "Web Attack - XSS": 0.9785276073619632
+      },
+      "fagi": {
+        "BENIGN": 0.9761177055938588,
+        "Bot": 0.6971252566735113,
+        "DDoS": 0.998,
+        "DoS GoldenEye": 0.991,
+        "DoS Hulk": 0.9816666666666667,
+        "DoS Slowhttptest": 0.9963333333333333,
+        "DoS slowloris": 0.9976666666666667,
+        "FTP-Patator": 1.0,
+        "Heartbleed": 0.45454545454545453,
+        "Infiltration": 0.1111111111111111,
+        "PortScan": 0.9963333333333333,
+        "SSH-Patator": 0.9973333333333333,
+        "Web Attack - Brute Force": 0.9965986394557823,
+        "Web Attack - Sql Injection": 0.8571428571428571,
+        "Web Attack - XSS": 0.9754601226993865
+      }
+    },
+    "per_class_detection_adv": {
+      "mlp": {
+        "BENIGN": 0.8846399886274788,
+        "Bot": 0.25770020533880905,
+        "DDoS": 0.6723333333333333,
+        "DoS GoldenEye": 0.637,
+        "DoS Hulk": 0.8333333333333334,
+        "DoS Slowhttptest": 0.38666666666666666,
+        "DoS slowloris": 0.6046666666666667,
+        "FTP-Patator": 0.6756666666666666,
+        "Heartbleed": 0.8181818181818182,
+        "Infiltration": 0.3611111111111111,
+        "PortScan": 0.5323333333333333,
+        "SSH-Patator": 0.244,
+        "Web Attack - Brute Force": 0.027891156462585033,
+        "Web Attack - Sql Injection": 0.0,
+        "Web Attack - XSS": 0.010736196319018405
+      },
+      "cnn": {
+        "BENIGN": 0.6699125737436918,
+        "Bot": 0.00513347022587269,
+        "DDoS": 0.474,
+        "DoS GoldenEye": 0.334,
+        "DoS Hulk": 0.2946666666666667,
+        "DoS Slowhttptest": 0.11266666666666666,
+        "DoS slowloris": 0.20666666666666667,
+        "FTP-Patator": 0.2703333333333333,
+        "Heartbleed": 0.45454545454545453,
+        "Infiltration": 0.2222222222222222,
+        "PortScan": 0.24166666666666667,
+        "SSH-Patator": 0.175,
+        "Web Attack - Brute Force": 0.007482993197278911,
+        "Web Attack - Sql Injection": 0.0,
+        "Web Attack - XSS": 0.010736196319018405
+      },
+      "lstm": {
+        "BENIGN": 0.5738503091904187,
+        "Bot": 0.027207392197125257,
+        "DDoS": 0.31533333333333335,
+        "DoS GoldenEye": 0.39566666666666667,
+        "DoS Hulk": 0.53,
+        "DoS Slowhttptest": 0.3616666666666667,
+        "DoS slowloris": 0.411,
+        "FTP-Patator": 0.266,
+        "Heartbleed": 0.2727272727272727,
+        "Infiltration": 0.3333333333333333,
+        "PortScan": 0.114,
+        "SSH-Patator": 0.547,
+        "Web Attack - Brute Force": 0.49183673469387756,
+        "Web Attack - Sql Injection": 0.19047619047619047,
+        "Web Attack - XSS": 0.5076687116564417
+      },
+      "gnn": {
+        "BENIGN": 0.9696495841921956,
+        "Bot": 0.824435318275154,
+        "DDoS": 0.995,
+        "DoS GoldenEye": 0.9816666666666667,
+        "DoS Hulk": 0.9833333333333333,
+        "DoS Slowhttptest": 0.9966666666666667,
+        "DoS slowloris": 0.993,
+        "FTP-Patator": 0.999,
+        "Heartbleed": 1.0,
+        "Infiltration": 0.7222222222222222,
+        "PortScan": 0.999,
+        "SSH-Patator": 0.9963333333333333,
+        "Web Attack - Brute Force": 0.9823129251700681,
+        "Web Attack - Sql Injection": 0.7142857142857143,
+        "Web Attack - XSS": 0.9524539877300614
+      },
+      "fagi": {
+        "BENIGN": 0.9673395408344587,
+        "Bot": 0.6606776180698152,
+        "DDoS": 0.9976666666666667,
+        "DoS GoldenEye": 0.9843333333333333,
+        "DoS Hulk": 0.972,
+        "DoS Slowhttptest": 0.9953333333333333,
+        "DoS slowloris": 0.9966666666666667,
+        "FTP-Patator": 0.9996666666666667,
+        "Heartbleed": 0.18181818181818182,
+        "Infiltration": 0.1111111111111111,
+        "PortScan": 0.993,
+        "SSH-Patator": 0.9953333333333333,
+        "Web Attack - Brute Force": 0.9959183673469387,
+        "Web Attack - Sql Injection": 0.8571428571428571,
+        "Web Attack - XSS": 0.9708588957055214
+      }
+    },
     "adversarial_robustness": {
-      "gnn_clean": 0.748, "gnn_adv": 0.672,
-      "fagi_clean": 0.756, "fagi_adv": 0.744,
-      "gap_pp": 7.2
+      "gnn_clean": 0.988,
+      "gnn_adv": 0.9745,
+      "fagi_clean": 0.9743,
+      "fagi_adv": 0.9672,
+      "fagi_no_dp_clean": 0.9872,
+      "fagi_no_dp_adv": 0.9852,
+      "gap_pp": -0.73,
+      "gnn_drop_pp": 1.35,
+      "fagi_drop_pp": 0.71,
+      "mcnemar_adv": {
+        "chi2": 104.42009987515605,
+        "p": 0.0
+      },
+      "mcnemar_clean": {
+        "chi2": 400.9512683578104,
+        "p": 0.0
+      }
+    },
+    "eps_sweep": {
+      "gnn": {
+        "0.02": 0.9863,
+        "0.05": 0.9827,
+        "0.1": 0.9744,
+        "0.2": 0.9091,
+        "0.5": 0.5008
+      },
+      "fagi_no_dp": {
+        "0.02": 0.9867,
+        "0.05": 0.9863,
+        "0.1": 0.9852,
+        "0.2": 0.9827,
+        "0.5": 0.9499
+      },
+      "fagi": {
+        "0.02": 0.973,
+        "0.05": 0.971,
+        "0.1": 0.9673,
+        "0.2": 0.9561,
+        "0.5": 0.8303
+      }
+    },
+    "strong_attack_k100": {
+      "gnn": 0.9743,
+      "fagi_no_dp": 0.9852,
+      "fagi": 0.9672
+    },
+    "reretrieved_neighbours": {
+      "gnn": 0.97,
+      "fagi_no_dp": 0.9821,
+      "fagi": 0.9654
     }
   },
   "api_native": {
-    "lateral_movement": {
-      "rf": 0.990, "gnn": 0.870, "fagi": 0.887,
-      "rf_std": 0.005, "gnn_std": 0.014, "fagi_std": 0.017
+    "original": {
+      "all_attacks": {
+        "rf": {
+          "clean": 1.0,
+          "clean_std": 0.0,
+          "adv": null,
+          "fpr": 0.0,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 1.0,
+            "schema_recon": 1.0,
+            "slow_exfiltration": 1.0,
+            "sql_injection": 1.0
+          }
+        },
+        "gnn_nopayload": {
+          "clean": 0.9895,
+          "clean_std": 0.0035,
+          "adv": 0.894,
+          "fpr": 0.0124,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 0.9875999999999999,
+            "schema_recon": 0.9786666666666667,
+            "slow_exfiltration": 1.0,
+            "sql_injection": 0.992
+          }
+        },
+        "gnn": {
+          "clean": 1.0,
+          "clean_std": 0.0,
+          "adv": 0.996,
+          "fpr": 0.0,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 1.0,
+            "schema_recon": 1.0,
+            "slow_exfiltration": 1.0,
+            "sql_injection": 1.0
+          }
+        },
+        "fagi_no_payload": {
+          "clean": 0.8238,
+          "clean_std": 0.0429,
+          "adv": 0.752,
+          "fpr": 0.0012,
+          "epsilon": 2.9331,
+          "per_type_detection": {
+            "lateral_movement": 0.4320000000000001,
+            "none": 0.9987999999999999,
+            "schema_recon": 0.696,
+            "slow_exfiltration": 1.0,
+            "sql_injection": 0.0
+          }
+        },
+        "fagi": {
+          "clean": 1.0,
+          "clean_std": 0.0,
+          "adv": 0.986,
+          "fpr": 0.0,
+          "epsilon": 2.9331,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 1.0,
+            "schema_recon": 1.0,
+            "slow_exfiltration": 1.0,
+            "sql_injection": 1.0
+          }
+        },
+        "mcnemar_payload": {
+          "chi2": 703.0014184397163,
+          "p": 0.0
+        }
+      },
+      "lateral_movement": {
+        "rf": {
+          "clean": 1.0,
+          "clean_std": 0.0,
+          "adv": null,
+          "fpr": 0.0,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 1.0
+          }
+        },
+        "gnn_nopayload": {
+          "clean": 0.9979,
+          "clean_std": 0.0013,
+          "adv": 0.9892,
+          "fpr": 0.0024,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 0.9975999999999999
+          }
+        },
+        "fagi": {
+          "clean": 1.0,
+          "clean_std": 0.0,
+          "adv": 1.0,
+          "fpr": 0.0,
+          "epsilon": 3.5613,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 1.0
+          }
+        }
+      },
+      "sql_injection": {
+        "fagi_no_payload": {
+          "clean": 0.8696,
+          "clean_std": 0.0,
+          "adv": 0.8696,
+          "fpr": 0.0,
+          "epsilon": 3.5613,
+          "per_type_detection": {
+            "none": 1.0,
+            "sql_injection": 0.0
+          }
+        },
+        "fagi": {
+          "clean": 1.0,
+          "clean_std": 0.0,
+          "adv": 1.0,
+          "fpr": 0.0,
+          "epsilon": 3.5613,
+          "per_type_detection": {
+            "none": 1.0,
+            "sql_injection": 1.0
+          }
+        },
+        "mcnemar_payload": {
+          "chi2": 373.00266666666664,
+          "p": 0.0
+        }
+      }
     },
-    "llm_contribution": {
-      "without_payload": 0.898, "with_payload": 0.925,
-      "gain_pp": 2.7
+    "hard": {
+      "all_attacks": {
+        "rf": {
+          "clean": 0.9983,
+          "clean_std": 0.001,
+          "adv": null,
+          "fpr": 0.0,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 1.0,
+            "schema_recon": 0.9813333333333334,
+            "slow_exfiltration": 1.0,
+            "sql_injection": 1.0
+          }
+        },
+        "gnn_nopayload": {
+          "clean": 0.981,
+          "clean_std": 0.0034,
+          "adv": 0.867,
+          "fpr": 0.0176,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 0.9823999999999999,
+            "schema_recon": 0.9946666666666667,
+            "slow_exfiltration": 0.9786666666666667,
+            "sql_injection": 0.9413333333333334
+          }
+        },
+        "gnn": {
+          "clean": 0.9908,
+          "clean_std": 0.003,
+          "adv": 0.852,
+          "fpr": 0.0056,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 0.992,
+            "none": 0.9944,
+            "schema_recon": 0.9786666666666667,
+            "slow_exfiltration": 0.9973333333333333,
+            "sql_injection": 0.9706666666666667
+          }
+        },
+        "fagi_no_payload": {
+          "clean": 0.7242,
+          "clean_std": 0.0072,
+          "adv": 0.7112,
+          "fpr": 0.0,
+          "epsilon": 2.9331,
+          "per_type_detection": {
+            "lateral_movement": 0.026666666666666665,
+            "none": 1.0,
+            "schema_recon": 0.07466666666666667,
+            "slow_exfiltration": 0.9546666666666667,
+            "sql_injection": 0.002666666666666667
+          }
+        },
+        "fagi": {
+          "clean": 0.9345,
+          "clean_std": 0.0069,
+          "adv": 0.8473,
+          "fpr": 0.0368,
+          "epsilon": 2.9331,
+          "per_type_detection": {
+            "lateral_movement": 0.8026666666666668,
+            "none": 0.9632,
+            "schema_recon": 0.9786666666666667,
+            "slow_exfiltration": 0.9466666666666667,
+            "sql_injection": 0.8186666666666668
+          }
+        },
+        "mcnemar_payload": {
+          "chi2": 679.1145332050048,
+          "p": 0.0
+        }
+      },
+      "lateral_movement": {
+        "rf": {
+          "clean": 1.0,
+          "clean_std": 0.0,
+          "adv": null,
+          "fpr": 0.0,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 1.0
+          }
+        },
+        "gnn_nopayload": {
+          "clean": 0.9986,
+          "clean_std": 0.0013,
+          "adv": 0.984,
+          "fpr": 0.0016,
+          "epsilon": null,
+          "per_type_detection": {
+            "lateral_movement": 1.0,
+            "none": 0.9984
+          }
+        },
+        "fagi": {
+          "clean": 0.9593,
+          "clean_std": 0.0109,
+          "adv": 0.9165,
+          "fpr": 0.0024,
+          "epsilon": 3.5613,
+          "per_type_detection": {
+            "lateral_movement": 0.7040000000000001,
+            "none": 0.9975999999999999
+          }
+        }
+      },
+      "sql_injection": {
+        "fagi_no_payload": {
+          "clean": 0.8696,
+          "clean_std": 0.0,
+          "adv": 0.8696,
+          "fpr": 0.0,
+          "epsilon": 3.5613,
+          "per_type_detection": {
+            "none": 1.0,
+            "sql_injection": 0.0
+          }
+        },
+        "fagi": {
+          "clean": 0.9805,
+          "clean_std": 0.002,
+          "adv": 0.9687,
+          "fpr": 0.0032,
+          "epsilon": 3.5613,
+          "per_type_detection": {
+            "none": 0.9968,
+            "sql_injection": 0.8720000000000001
+          }
+        },
+        "mcnemar_payload": {
+          "chi2": 301.8626865671642,
+          "p": 0.0
+        }
+      }
+    }
+  },
+  "graph_structure_attack": {
+    "original": {
+      "gnn": {
+        "clean": 1.0,
+        "edge_40pct": 0.9998,
+        "edge_80pct": 0.9995
+      },
+      "fagi_no_dp": {
+        "clean": 1.0,
+        "edge_40pct": 1.0,
+        "edge_80pct": 1.0
+      },
+      "fagi": {
+        "clean": 1.0,
+        "edge_40pct": 1.0,
+        "edge_80pct": 1.0
+      }
     },
-    "graph_structure_attack": {
-      "gnn":  {"clean": 0.722, "edge_40": 0.721, "edge_80": 0.719},
-      "fagi": {"clean": 0.742, "edge_40": 0.746, "edge_80": 0.744}
+    "hard": {
+      "gnn": {
+        "clean": 0.9908,
+        "edge_40pct": 0.9852,
+        "edge_80pct": 0.9788
+      },
+      "fagi_no_dp": {
+        "clean": 0.9923,
+        "edge_40pct": 0.9912,
+        "edge_80pct": 0.9905
+      },
+      "fagi": {
+        "clean": 0.9345,
+        "edge_40pct": 0.93,
+        "edge_80pct": 0.932
+      }
     }
   },
   "ablation": {
-    "variants": [
-      {"name": "FAGI (full)",     "clean": 0.756, "adv": 0.744, "dp": true},
-      {"name": "FAGI − LLM",      "clean": 0.741, "adv": 0.739, "dp": true},
-      {"name": "FAGI − GNNGuard", "clean": 0.754, "adv": 0.689, "dp": true},
-      {"name": "FAGI − PGD",      "clean": 0.753, "adv": 0.672, "dp": true},
-      {"name": "FAGI − Federated","clean": 0.761, "adv": 0.742, "dp": false},
-      {"name": "GNN Baseline",    "clean": 0.748, "adv": 0.672, "dp": false}
+    "cicids2017": [
+      {
+        "name": "FAGI (full)",
+        "key": "fagi",
+        "clean": 0.9743,
+        "clean_std": 0.0028,
+        "adv": 0.9672,
+        "adv_std": 0.0017,
+        "fpr": 0.0239,
+        "dp": true,
+        "epsilon": 1.7154,
+        "mia_auc": 0.5018,
+        "mia_attack_accuracy": 0.4992
+      },
+      {
+        "name": "FAGI - GNNGuard",
+        "key": "fagi_no_guard",
+        "clean": 0.9737,
+        "clean_std": 0.0016,
+        "adv": 0.9679,
+        "adv_std": 0.0014,
+        "fpr": 0.0217,
+        "dp": true,
+        "epsilon": 1.7154,
+        "mia_auc": 0.501,
+        "mia_attack_accuracy": 0.5004
+      },
+      {
+        "name": "FAGI - PGD",
+        "key": "fagi_no_pgd",
+        "clean": 0.9758,
+        "clean_std": 0.0011,
+        "adv": 0.9536,
+        "adv_std": 0.0035,
+        "fpr": 0.0229,
+        "dp": true,
+        "epsilon": 1.7154,
+        "mia_auc": 0.5006,
+        "mia_attack_accuracy": 0.4994
+      },
+      {
+        "name": "FAGI - DP-SGD",
+        "key": "fagi_no_dp",
+        "clean": 0.9872,
+        "clean_std": 0.0014,
+        "adv": 0.9852,
+        "adv_std": 0.0019,
+        "fpr": 0.0149,
+        "dp": false,
+        "epsilon": null,
+        "mia_auc": 0.4996,
+        "mia_attack_accuracy": 0.4991
+      },
+      {
+        "name": "GNN Baseline",
+        "key": "gnn",
+        "clean": 0.988,
+        "clean_std": 0.0014,
+        "adv": 0.9745,
+        "adv_std": 0.0045,
+        "fpr": 0.0176,
+        "dp": false,
+        "epsilon": null,
+        "mia_auc": 0.4998,
+        "mia_attack_accuracy": 0.4996
+      }
+    ],
+    "synthetic": [
+      {
+        "name": "FAGI (full)",
+        "key": "fagi",
+        "clean": 1.0,
+        "clean_std": 0.0,
+        "adv": 0.986,
+        "adv_std": 0.0058,
+        "fpr": 0.0,
+        "dp": true,
+        "epsilon": 2.9331
+      },
+      {
+        "name": "FAGI - payload feature",
+        "key": "fagi_no_payload",
+        "clean": 0.8238,
+        "clean_std": 0.0429,
+        "adv": 0.752,
+        "adv_std": 0.0278,
+        "fpr": 0.0012,
+        "dp": true,
+        "epsilon": 2.9331
+      },
+      {
+        "name": "FAGI - GNNGuard",
+        "key": "fagi_no_guard",
+        "clean": 1.0,
+        "clean_std": 0.0,
+        "adv": 0.9785,
+        "adv_std": 0.0102,
+        "fpr": 0.0,
+        "dp": true,
+        "epsilon": 2.9331
+      },
+      {
+        "name": "FAGI - PGD",
+        "key": "fagi_no_pgd",
+        "clean": 1.0,
+        "clean_std": 0.0,
+        "adv": 0.9713,
+        "adv_std": 0.0078,
+        "fpr": 0.0,
+        "dp": true,
+        "epsilon": 2.9331
+      },
+      {
+        "name": "FAGI - DP-SGD",
+        "key": "fagi_no_dp",
+        "clean": 1.0,
+        "clean_std": 0.0,
+        "adv": 0.9998,
+        "adv_std": 0.0005,
+        "fpr": 0.0,
+        "dp": false,
+        "epsilon": null
+      },
+      {
+        "name": "GNN Baseline (no payload)",
+        "key": "gnn_nopayload",
+        "clean": 0.9895,
+        "clean_std": 0.0035,
+        "adv": 0.894,
+        "adv_std": 0.0135,
+        "fpr": 0.0124,
+        "dp": false,
+        "epsilon": null
+      }
+    ],
+    "synthetic_hard": [
+      {
+        "name": "FAGI (full)",
+        "key": "fagi",
+        "clean": 0.9345,
+        "clean_std": 0.0069,
+        "adv": 0.8473,
+        "adv_std": 0.0086,
+        "fpr": 0.0368,
+        "dp": true,
+        "epsilon": 2.9331
+      },
+      {
+        "name": "FAGI - payload feature",
+        "key": "fagi_no_payload",
+        "clean": 0.7242,
+        "clean_std": 0.0072,
+        "adv": 0.7112,
+        "adv_std": 0.0026,
+        "fpr": 0.0,
+        "dp": true,
+        "epsilon": 2.9331
+      },
+      {
+        "name": "FAGI - GNNGuard",
+        "key": "fagi_no_guard",
+        "clean": 0.9325,
+        "clean_std": 0.0065,
+        "adv": 0.8443,
+        "adv_std": 0.0074,
+        "fpr": 0.036,
+        "dp": true,
+        "epsilon": 2.9331
+      },
+      {
+        "name": "FAGI - PGD",
+        "key": "fagi_no_pgd",
+        "clean": 0.9365,
+        "clean_std": 0.0082,
+        "adv": 0.826,
+        "adv_std": 0.0071,
+        "fpr": 0.042,
+        "dp": true,
+        "epsilon": 2.9331
+      },
+      {
+        "name": "FAGI - DP-SGD",
+        "key": "fagi_no_dp",
+        "clean": 0.9923,
+        "clean_std": 0.0015,
+        "adv": 0.9667,
+        "adv_std": 0.0031,
+        "fpr": 0.0068,
+        "dp": false,
+        "epsilon": null
+      },
+      {
+        "name": "GNN Baseline (no payload)",
+        "key": "gnn_nopayload",
+        "clean": 0.981,
+        "clean_std": 0.0034,
+        "adv": 0.867,
+        "adv_std": 0.0201,
+        "fpr": 0.0176,
+        "dp": false,
+        "epsilon": null
+      }
     ]
   },
   "federated": {
-    "rf_central": 0.944,
-    "fagi_central": 0.628,
-    "fagi_federated": 0.499,
-    "membership_inference": {
-      "fagi": 0.518, "centralised": 0.786
+    "original": {
+      "rf_central": {
+        "accuracy": 1.0,
+        "accuracy_std": 0.0,
+        "fpr": 0.0,
+        "detection_rate": 1.0,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 1.0,
+          "schema_recon": 1.0,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "central_nodp": {
+        "accuracy": 1.0,
+        "accuracy_std": 0.0,
+        "fpr": 0.0,
+        "detection_rate": 1.0,
+        "mia_auc": 0.4978,
+        "mia_attack_accuracy": 0.506,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 1.0,
+          "schema_recon": 1.0,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "central_dp": {
+        "accuracy": 0.9346,
+        "accuracy_std": 0.012,
+        "fpr": 0.0,
+        "detection_rate": 0.8692,
+        "epsilon": 3.4723,
+        "mia_auc": 0.4985,
+        "mia_attack_accuracy": 0.5023,
+        "per_type_detection": {
+          "lateral_movement": 0.47680000000000006,
+          "none": 1.0,
+          "schema_recon": 1.0,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "fedavg_nodp": {
+        "accuracy": 0.9804,
+        "accuracy_std": 0.0119,
+        "fpr": 0.0,
+        "detection_rate": 0.9608,
+        "mia_auc": 0.497,
+        "mia_attack_accuracy": 0.4997,
+        "per_type_detection": {
+          "lateral_movement": 0.8432000000000001,
+          "none": 1.0,
+          "schema_recon": 1.0,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "fedavg_dp": {
+        "accuracy": 0.7142,
+        "accuracy_std": 0.0162,
+        "fpr": 0.0,
+        "detection_rate": 0.4284,
+        "epsilon": 7.9584,
+        "mia_auc": 0.502,
+        "mia_attack_accuracy": 0.4957,
+        "per_type_detection": {
+          "lateral_movement": 0.0,
+          "none": 1.0,
+          "schema_recon": 0.0,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 0.7135999999999999
+        }
+      },
+      "local_only_mean": {
+        "accuracy": 0.8712,
+        "accuracy_std": 0.0174
+      },
+      "setup": {
+        "train_orgs": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "test_org": 4,
+        "rounds": 30,
+        "local_epochs": 1,
+        "repeats": 5
+      }
+    },
+    "hard": {
+      "rf_central": {
+        "accuracy": 0.9938,
+        "accuracy_std": 0.0007,
+        "fpr": 0.0,
+        "detection_rate": 0.9876,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 1.0,
+          "schema_recon": 0.9503999999999999,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "central_nodp": {
+        "accuracy": 0.9696,
+        "accuracy_std": 0.009,
+        "fpr": 0.0128,
+        "detection_rate": 0.952,
+        "mia_auc": 0.5051,
+        "mia_attack_accuracy": 0.5007,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 0.9872,
+          "schema_recon": 0.8448,
+          "slow_exfiltration": 0.9872,
+          "sql_injection": 0.976
+        }
+      },
+      "central_dp": {
+        "accuracy": 0.8276,
+        "accuracy_std": 0.0239,
+        "fpr": 0.0088,
+        "detection_rate": 0.664,
+        "epsilon": 3.4723,
+        "mia_auc": 0.4974,
+        "mia_attack_accuracy": 0.502,
+        "per_type_detection": {
+          "lateral_movement": 0.36160000000000003,
+          "none": 0.9911999999999999,
+          "schema_recon": 0.6496000000000001,
+          "slow_exfiltration": 0.9216000000000001,
+          "sql_injection": 0.7232
+        }
+      },
+      "fedavg_nodp": {
+        "accuracy": 0.8584,
+        "accuracy_std": 0.0522,
+        "fpr": 0.0016,
+        "detection_rate": 0.7184,
+        "mia_auc": 0.4992,
+        "mia_attack_accuracy": 0.5097,
+        "per_type_detection": {
+          "lateral_movement": 0.5984,
+          "none": 0.9984,
+          "schema_recon": 0.6912,
+          "slow_exfiltration": 0.9296000000000001,
+          "sql_injection": 0.6544000000000001
+        }
+      },
+      "fedavg_dp": {
+        "accuracy": 0.6296,
+        "accuracy_std": 0.0342,
+        "fpr": 0.0,
+        "detection_rate": 0.2592,
+        "epsilon": 7.9584,
+        "mia_auc": 0.4959,
+        "mia_attack_accuracy": 0.503,
+        "per_type_detection": {
+          "lateral_movement": 0.0,
+          "none": 1.0,
+          "schema_recon": 0.0,
+          "slow_exfiltration": 0.752,
+          "sql_injection": 0.2848
+        }
+      },
+      "local_only_mean": {
+        "accuracy": 0.8244,
+        "accuracy_std": 0.0133
+      },
+      "setup": {
+        "train_orgs": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "test_org": 4,
+        "rounds": 30,
+        "local_epochs": 1,
+        "repeats": 5
+      }
     }
   },
   "privacy": {
-    "epsilon": 2.0, "delta": 1e-5, "sigma": 1.1, "clip_norm": 1.0
+    "mechanism": "DP-SGD (Abadi et al. 2016): per-example clipping, Gaussian noise, Poisson sampling",
+    "accountant": "Renyi DP (Mironov 2017; Mironov, Talwar, Zhang 2019) via Opacus compute_rdp",
+    "sigma": 1.1,
+    "clip_norm": 1.0,
+    "delta": 1e-05,
+    "epsilon_cicids2017": 1.7154,
+    "epsilon_synthetic_central": 2.9331,
+    "epsilon_federated_per_client": 7.9584
   }
 }

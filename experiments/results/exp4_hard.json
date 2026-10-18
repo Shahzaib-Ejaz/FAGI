@@ -1,0 +1,962 @@
+{
+  "config": {
+    "n_folds": 5,
+    "cv_seed": 42,
+    "epochs": 30,
+    "batch_size": 32,
+    "lr": 0.002,
+    "gnnguard_tau": 0.15,
+    "pgd_eps": 0.1,
+    "pgd_train_steps": 10,
+    "pgd_eval_steps": 20,
+    "dp_sigma": 1.1,
+    "dp_clip": 1.0,
+    "dp_delta": 1e-05,
+    "init": "reset_after_seed"
+  },
+  "env": {
+    "python": "3.13.16",
+    "torch": "2.14.1+cu130",
+    "numpy": "2.5.3",
+    "sklearn": "1.9.1",
+    "threads": 2
+  },
+  "train_orgs": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "test_org": 4,
+  "rounds": 30,
+  "local_epochs": 1,
+  "repeats": 5,
+  "member_fraction": 0.8,
+  "summary": {
+    "rf_central": {
+      "accuracy": {
+        "mean": 0.9938,
+        "std": 0.0007483314773547889,
+        "folds": [
+          0.994,
+          0.993,
+          0.994,
+          0.995,
+          0.993
+        ]
+      },
+      "fpr": {
+        "mean": 0.0,
+        "std": 0.0,
+        "folds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "detection_rate": {
+        "mean": 0.9875999999998024,
+        "std": 0.001496662954709281,
+        "folds": [
+          0.9879999999998024,
+          0.9859999999998028,
+          0.9879999999998024,
+          0.989999999999802,
+          0.9859999999998028
+        ]
+      },
+      "per_type_detection": {
+        "lateral_movement": 1.0,
+        "none": 1.0,
+        "schema_recon": 0.9503999999999999,
+        "slow_exfiltration": 1.0,
+        "sql_injection": 1.0
+      }
+    },
+    "central_nodp": {
+      "accuracy": {
+        "mean": 0.9696,
+        "std": 0.009002221947941527,
+        "folds": [
+          0.972,
+          0.961,
+          0.984,
+          0.959,
+          0.972
+        ]
+      },
+      "fpr": {
+        "mean": 0.012799999999997442,
+        "std": 0.00159999999999968,
+        "folds": [
+          0.011999999999997601,
+          0.009999999999998,
+          0.0139999999999972,
+          0.0139999999999972,
+          0.0139999999999972
+        ]
+      },
+      "detection_rate": {
+        "mean": 0.9519999999998096,
+        "std": 0.01871897433087238,
+        "folds": [
+          0.9559999999998088,
+          0.9319999999998136,
+          0.9819999999998036,
+          0.9319999999998136,
+          0.9579999999998084
+        ]
+      },
+      "mia_auc": {
+        "mean": 0.5051133333333334,
+        "std": 0.019973735292709044,
+        "folds": [
+          0.49445138888888884,
+          0.49820694444444447,
+          0.5412236111111112,
+          0.48247222222222225,
+          0.5092125000000001
+        ]
+      },
+      "mia_attack_accuracy": {
+        "mean": 0.5006666666666666,
+        "std": 0.015040685563571302,
+        "folds": [
+          0.49,
+          0.4816666666666667,
+          0.525,
+          0.49833333333333335,
+          0.5083333333333333
+        ]
+      },
+      "per_type_detection": {
+        "lateral_movement": 1.0,
+        "none": 0.9872,
+        "schema_recon": 0.8448,
+        "slow_exfiltration": 0.9872,
+        "sql_injection": 0.976
+      }
+    },
+    "central_dp": {
+      "accuracy": {
+        "mean": 0.8276,
+        "std": 0.023929897617833623,
+        "folds": [
+          0.789,
+          0.855,
+          0.849,
+          0.83,
+          0.815
+        ]
+      },
+      "fpr": {
+        "mean": 0.00879999999999824,
+        "std": 0.0015999999999996798,
+        "folds": [
+          0.0079999999999984,
+          0.009999999999998,
+          0.009999999999998,
+          0.009999999999998,
+          0.0059999999999988006
+        ]
+      },
+      "detection_rate": {
+        "mean": 0.6639999999998673,
+        "std": 0.048940780541375115,
+        "folds": [
+          0.5859999999998828,
+          0.719999999999856,
+          0.7079999999998584,
+          0.669999999999866,
+          0.6359999999998728
+        ]
+      },
+      "epsilon": {
+        "mean": 3.472326720212159,
+        "std": 0.0,
+        "folds": [
+          3.472326720212159,
+          3.472326720212159,
+          3.472326720212159,
+          3.472326720212159,
+          3.472326720212159
+        ]
+      },
+      "mia_auc": {
+        "mean": 0.4974186111111111,
+        "std": 0.017511463079866587,
+        "folds": [
+          0.49825972222222226,
+          0.504,
+          0.5223972222222222,
+          0.4681722222222222,
+          0.4942638888888889
+        ]
+      },
+      "mia_attack_accuracy": {
+        "mean": 0.502,
+        "std": 0.009153020145164012,
+        "folds": [
+          0.5066666666666667,
+          0.49333333333333335,
+          0.5166666666666667,
+          0.5016666666666667,
+          0.49166666666666664
+        ]
+      },
+      "per_type_detection": {
+        "lateral_movement": 0.36160000000000003,
+        "none": 0.9911999999999999,
+        "schema_recon": 0.6496000000000001,
+        "slow_exfiltration": 0.9216000000000001,
+        "sql_injection": 0.7232
+      }
+    },
+    "fedavg_nodp": {
+      "accuracy": {
+        "mean": 0.8583999999999999,
+        "std": 0.05216358883359158,
+        "folds": [
+          0.876,
+          0.907,
+          0.872,
+          0.88,
+          0.757
+        ]
+      },
+      "fpr": {
+        "mean": 0.0015999999999996802,
+        "std": 0.0007999999999998401,
+        "folds": [
+          0.0019999999999996,
+          0.0019999999999996,
+          0.0019999999999996,
+          0.0019999999999996,
+          0.0
+        ]
+      },
+      "detection_rate": {
+        "mean": 0.7183999999998564,
+        "std": 0.1051048999809028,
+        "folds": [
+          0.7539999999998492,
+          0.8159999999998369,
+          0.7459999999998508,
+          0.7619999999998476,
+          0.5139999999998972
+        ]
+      },
+      "mia_auc": {
+        "mean": 0.4991994444444445,
+        "std": 0.019900279920017763,
+        "folds": [
+          0.49711388888888886,
+          0.49793750000000003,
+          0.5261388888888889,
+          0.4653791666666667,
+          0.5094277777777778
+        ]
+      },
+      "mia_attack_accuracy": {
+        "mean": 0.5096666666666667,
+        "std": 0.01061445555206042,
+        "folds": [
+          0.5016666666666667,
+          0.5133333333333333,
+          0.5283333333333333,
+          0.49833333333333335,
+          0.5066666666666667
+        ]
+      },
+      "per_type_detection": {
+        "lateral_movement": 0.5984,
+        "none": 0.9984,
+        "schema_recon": 0.6912,
+        "slow_exfiltration": 0.9296000000000001,
+        "sql_injection": 0.6544000000000001
+      }
+    },
+    "fedavg_dp": {
+      "accuracy": {
+        "mean": 0.6295999999999999,
+        "std": 0.034243831561319216,
+        "folds": [
+          0.575,
+          0.661,
+          0.604,
+          0.659,
+          0.649
+        ]
+      },
+      "fpr": {
+        "mean": 0.0,
+        "std": 0.0,
+        "folds": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "detection_rate": {
+        "mean": 0.2591999999999482,
+        "std": 0.06848766312262468,
+        "folds": [
+          0.14999999999997,
+          0.3219999999999356,
+          0.2079999999999584,
+          0.3179999999999364,
+          0.2979999999999404
+        ]
+      },
+      "epsilon": {
+        "mean": 7.958358204425589,
+        "std": 0.0,
+        "folds": [
+          7.958358204425589,
+          7.958358204425589,
+          7.958358204425589,
+          7.958358204425589,
+          7.958358204425589
+        ]
+      },
+      "mia_auc": {
+        "mean": 0.4959175,
+        "std": 0.009188201749465925,
+        "folds": [
+          0.4932027777777778,
+          0.4963291666666667,
+          0.5115736111111111,
+          0.4829041666666667,
+          0.4955777777777778
+        ]
+      },
+      "mia_attack_accuracy": {
+        "mean": 0.5029999999999999,
+        "std": 0.016646654652245022,
+        "folds": [
+          0.5216666666666666,
+          0.5083333333333333,
+          0.49166666666666664,
+          0.5166666666666667,
+          0.4766666666666667
+        ]
+      },
+      "per_type_detection": {
+        "lateral_movement": 0.0,
+        "none": 1.0,
+        "schema_recon": 0.0,
+        "slow_exfiltration": 0.752,
+        "sql_injection": 0.2848
+      }
+    },
+    "local_only_mean": {
+      "accuracy": {
+        "mean": 0.8244,
+        "std": 0.01326046756340062,
+        "folds": [
+          0.82875,
+          0.8302499999999999,
+          0.8247500000000001,
+          0.7995,
+          0.83875
+        ]
+      }
+    }
+  },
+  "runs": [
+    {
+      "rf_central": {
+        "test": {
+          "accuracy": 0.994,
+          "fpr": 0.0,
+          "detection_rate": 0.9879999999998024,
+          "precision": 0.9999999999997976,
+          "f1": 0.993963782645979
+        },
+        "epsilon": null,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 1.0,
+          "schema_recon": 0.952,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "central_nodp": {
+        "test": {
+          "accuracy": 0.972,
+          "fpr": 0.011999999999997601,
+          "detection_rate": 0.9559999999998088,
+          "precision": 0.98760330578492,
+          "f1": 0.9715447153969702
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.49445138888888884,
+          "attack_accuracy": 0.49,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 0.988,
+          "schema_recon": 0.872,
+          "slow_exfiltration": 0.984,
+          "sql_injection": 0.968
+        }
+      },
+      "central_dp": {
+        "test": {
+          "accuracy": 0.789,
+          "fpr": 0.0079999999999984,
+          "detection_rate": 0.5859999999998828,
+          "precision": 0.9865319865316544,
+          "f1": 0.7352572145076389
+        },
+        "epsilon": 3.472326720212159,
+        "mia": {
+          "auc": 0.49825972222222226,
+          "attack_accuracy": 0.5066666666666667,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.232,
+          "none": 0.992,
+          "schema_recon": 0.464,
+          "slow_exfiltration": 0.928,
+          "sql_injection": 0.72
+        }
+      },
+      "fedavg_nodp": {
+        "test": {
+          "accuracy": 0.876,
+          "fpr": 0.0019999999999996,
+          "detection_rate": 0.7539999999998492,
+          "precision": 0.9973544973542335,
+          "f1": 0.8587699316136399
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.49711388888888886,
+          "attack_accuracy": 0.5016666666666667,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.712,
+          "none": 0.998,
+          "schema_recon": 0.736,
+          "slow_exfiltration": 0.928,
+          "sql_injection": 0.64
+        }
+      },
+      "fedavg_dp": {
+        "test": {
+          "accuracy": 0.575,
+          "fpr": 0.0,
+          "detection_rate": 0.14999999999997,
+          "precision": 0.9999999999986666,
+          "f1": 0.26086956519461624
+        },
+        "epsilon": 7.958358204425589,
+        "mia": {
+          "auc": 0.4932027777777778,
+          "attack_accuracy": 0.5216666666666666,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.0,
+          "none": 1.0,
+          "schema_recon": 0.0,
+          "slow_exfiltration": 0.568,
+          "sql_injection": 0.032
+        }
+      },
+      "local_only_mean": {
+        "test": {
+          "accuracy": 0.82875
+        },
+        "per_org": [
+          0.906,
+          0.93,
+          0.74,
+          0.739
+        ]
+      }
+    },
+    {
+      "rf_central": {
+        "test": {
+          "accuracy": 0.993,
+          "fpr": 0.0,
+          "detection_rate": 0.9859999999998028,
+          "precision": 0.9999999999997972,
+          "f1": 0.992950654531877
+        },
+        "epsilon": null,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 1.0,
+          "schema_recon": 0.944,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "central_nodp": {
+        "test": {
+          "accuracy": 0.961,
+          "fpr": 0.009999999999998,
+          "detection_rate": 0.9319999999998136,
+          "precision": 0.989384288747136,
+          "f1": 0.9598352213710621
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.49820694444444447,
+          "attack_accuracy": 0.4816666666666667,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 0.99,
+          "schema_recon": 0.768,
+          "slow_exfiltration": 0.984,
+          "sql_injection": 0.976
+        }
+      },
+      "central_dp": {
+        "test": {
+          "accuracy": 0.855,
+          "fpr": 0.009999999999998,
+          "detection_rate": 0.719999999999856,
+          "precision": 0.9863013698627435,
+          "f1": 0.8323699421475572
+        },
+        "epsilon": 3.472326720212159,
+        "mia": {
+          "auc": 0.504,
+          "attack_accuracy": 0.49333333333333335,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.44,
+          "none": 0.99,
+          "schema_recon": 0.784,
+          "slow_exfiltration": 0.92,
+          "sql_injection": 0.736
+        }
+      },
+      "fedavg_nodp": {
+        "test": {
+          "accuracy": 0.907,
+          "fpr": 0.0019999999999996,
+          "detection_rate": 0.8159999999998369,
+          "precision": 0.997555012224695,
+          "f1": 0.8976897689272013
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.49793750000000003,
+          "attack_accuracy": 0.5133333333333333,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.776,
+          "none": 0.998,
+          "schema_recon": 0.872,
+          "slow_exfiltration": 0.936,
+          "sql_injection": 0.68
+        }
+      },
+      "fedavg_dp": {
+        "test": {
+          "accuracy": 0.661,
+          "fpr": 0.0,
+          "detection_rate": 0.3219999999999356,
+          "precision": 0.9999999999993789,
+          "f1": 0.4871406958782837
+        },
+        "epsilon": 7.958358204425589,
+        "mia": {
+          "auc": 0.4963291666666667,
+          "attack_accuracy": 0.5083333333333333,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.0,
+          "none": 1.0,
+          "schema_recon": 0.0,
+          "slow_exfiltration": 0.832,
+          "sql_injection": 0.456
+        }
+      },
+      "local_only_mean": {
+        "test": {
+          "accuracy": 0.8302499999999999
+        },
+        "per_org": [
+          0.883,
+          0.953,
+          0.746,
+          0.739
+        ]
+      }
+    },
+    {
+      "rf_central": {
+        "test": {
+          "accuracy": 0.994,
+          "fpr": 0.0,
+          "detection_rate": 0.9879999999998024,
+          "precision": 0.9999999999997976,
+          "f1": 0.993963782645979
+        },
+        "epsilon": null,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 1.0,
+          "schema_recon": 0.952,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "central_nodp": {
+        "test": {
+          "accuracy": 0.984,
+          "fpr": 0.0139999999999972,
+          "detection_rate": 0.9819999999998036,
+          "precision": 0.9859437751002037,
+          "f1": 0.9839679358215465
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.5412236111111112,
+          "attack_accuracy": 0.525,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 0.986,
+          "schema_recon": 0.968,
+          "slow_exfiltration": 0.992,
+          "sql_injection": 0.968
+        }
+      },
+      "central_dp": {
+        "test": {
+          "accuracy": 0.849,
+          "fpr": 0.009999999999998,
+          "detection_rate": 0.7079999999998584,
+          "precision": 0.986072423398054,
+          "f1": 0.8242142025122727
+        },
+        "epsilon": 3.472326720212159,
+        "mia": {
+          "auc": 0.5223972222222222,
+          "attack_accuracy": 0.5166666666666667,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.424,
+          "none": 0.99,
+          "schema_recon": 0.752,
+          "slow_exfiltration": 0.92,
+          "sql_injection": 0.736
+        }
+      },
+      "fedavg_nodp": {
+        "test": {
+          "accuracy": 0.872,
+          "fpr": 0.0019999999999996,
+          "detection_rate": 0.7459999999998508,
+          "precision": 0.9973262032082895,
+          "f1": 0.8535469107059925
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.5261388888888889,
+          "attack_accuracy": 0.5283333333333333,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.568,
+          "none": 0.998,
+          "schema_recon": 0.832,
+          "slow_exfiltration": 0.928,
+          "sql_injection": 0.656
+        }
+      },
+      "fedavg_dp": {
+        "test": {
+          "accuracy": 0.604,
+          "fpr": 0.0,
+          "detection_rate": 0.2079999999999584,
+          "precision": 0.9999999999990384,
+          "f1": 0.3443708608985308
+        },
+        "epsilon": 7.958358204425589,
+        "mia": {
+          "auc": 0.5115736111111111,
+          "attack_accuracy": 0.49166666666666664,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.0,
+          "none": 1.0,
+          "schema_recon": 0.0,
+          "slow_exfiltration": 0.688,
+          "sql_injection": 0.144
+        }
+      },
+      "local_only_mean": {
+        "test": {
+          "accuracy": 0.8247500000000001
+        },
+        "per_org": [
+          0.921,
+          0.897,
+          0.741,
+          0.74
+        ]
+      }
+    },
+    {
+      "rf_central": {
+        "test": {
+          "accuracy": 0.995,
+          "fpr": 0.0,
+          "detection_rate": 0.989999999999802,
+          "precision": 0.999999999999798,
+          "f1": 0.9949748743216605
+        },
+        "epsilon": null,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 1.0,
+          "schema_recon": 0.96,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "central_nodp": {
+        "test": {
+          "accuracy": 0.959,
+          "fpr": 0.0139999999999972,
+          "detection_rate": 0.9319999999998136,
+          "precision": 0.9852008456657537,
+          "f1": 0.9578622815531305
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.48247222222222225,
+          "attack_accuracy": 0.49833333333333335,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 0.986,
+          "schema_recon": 0.752,
+          "slow_exfiltration": 0.992,
+          "sql_injection": 0.984
+        }
+      },
+      "central_dp": {
+        "test": {
+          "accuracy": 0.83,
+          "fpr": 0.009999999999998,
+          "detection_rate": 0.669999999999866,
+          "precision": 0.9852941176467691,
+          "f1": 0.7976190475706718
+        },
+        "epsilon": 3.472326720212159,
+        "mia": {
+          "auc": 0.4681722222222222,
+          "attack_accuracy": 0.5016666666666667,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.384,
+          "none": 0.99,
+          "schema_recon": 0.648,
+          "slow_exfiltration": 0.928,
+          "sql_injection": 0.72
+        }
+      },
+      "fedavg_nodp": {
+        "test": {
+          "accuracy": 0.88,
+          "fpr": 0.0019999999999996,
+          "detection_rate": 0.7619999999998476,
+          "precision": 0.9973821989526185,
+          "f1": 0.8639455781819916
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.4653791666666667,
+          "attack_accuracy": 0.49833333333333335,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.672,
+          "none": 0.998,
+          "schema_recon": 0.808,
+          "slow_exfiltration": 0.928,
+          "sql_injection": 0.64
+        }
+      },
+      "fedavg_dp": {
+        "test": {
+          "accuracy": 0.659,
+          "fpr": 0.0,
+          "detection_rate": 0.3179999999999364,
+          "precision": 0.9999999999993712,
+          "f1": 0.4825493171104341
+        },
+        "epsilon": 7.958358204425589,
+        "mia": {
+          "auc": 0.4829041666666667,
+          "attack_accuracy": 0.5166666666666667,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.0,
+          "none": 1.0,
+          "schema_recon": 0.0,
+          "slow_exfiltration": 0.84,
+          "sql_injection": 0.432
+        }
+      },
+      "local_only_mean": {
+        "test": {
+          "accuracy": 0.7995
+        },
+        "per_org": [
+          0.909,
+          0.814,
+          0.734,
+          0.741
+        ]
+      }
+    },
+    {
+      "rf_central": {
+        "test": {
+          "accuracy": 0.993,
+          "fpr": 0.0,
+          "detection_rate": 0.9859999999998028,
+          "precision": 0.9999999999997972,
+          "f1": 0.992950654531877
+        },
+        "epsilon": null,
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 1.0,
+          "schema_recon": 0.944,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 1.0
+        }
+      },
+      "central_nodp": {
+        "test": {
+          "accuracy": 0.972,
+          "fpr": 0.0139999999999972,
+          "detection_rate": 0.9579999999998084,
+          "precision": 0.9855967078187272,
+          "f1": 0.9716024340268922
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.5092125000000001,
+          "attack_accuracy": 0.5083333333333333,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 1.0,
+          "none": 0.986,
+          "schema_recon": 0.864,
+          "slow_exfiltration": 0.984,
+          "sql_injection": 0.984
+        }
+      },
+      "central_dp": {
+        "test": {
+          "accuracy": 0.815,
+          "fpr": 0.0059999999999988006,
+          "detection_rate": 0.6359999999998728,
+          "precision": 0.9906542056071681,
+          "f1": 0.7746650425831259
+        },
+        "epsilon": 3.472326720212159,
+        "mia": {
+          "auc": 0.4942638888888889,
+          "attack_accuracy": 0.49166666666666664,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.328,
+          "none": 0.994,
+          "schema_recon": 0.6,
+          "slow_exfiltration": 0.912,
+          "sql_injection": 0.704
+        }
+      },
+      "fedavg_nodp": {
+        "test": {
+          "accuracy": 0.757,
+          "fpr": 0.0,
+          "detection_rate": 0.5139999999998972,
+          "precision": 0.999999999999611,
+          "f1": 0.6789960369430837
+        },
+        "epsilon": null,
+        "mia": {
+          "auc": 0.5094277777777778,
+          "attack_accuracy": 0.5066666666666667,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.264,
+          "none": 1.0,
+          "schema_recon": 0.208,
+          "slow_exfiltration": 0.928,
+          "sql_injection": 0.656
+        }
+      },
+      "fedavg_dp": {
+        "test": {
+          "accuracy": 0.649,
+          "fpr": 0.0,
+          "detection_rate": 0.2979999999999404,
+          "precision": 0.999999999999329,
+          "f1": 0.4591679506578579
+        },
+        "epsilon": 7.958358204425589,
+        "mia": {
+          "auc": 0.4955777777777778,
+          "attack_accuracy": 0.4766666666666667,
+          "n_pairs": 600
+        },
+        "per_type_detection": {
+          "lateral_movement": 0.0,
+          "none": 1.0,
+          "schema_recon": 0.0,
+          "slow_exfiltration": 0.832,
+          "sql_injection": 0.36
+        }
+      },
+      "local_only_mean": {
+        "test": {
+          "accuracy": 0.83875
+        },
+        "per_org": [
+          0.917,
+          0.956,
+          0.748,
+          0.734
+        ]
+      }
+    }
+  ]
+}

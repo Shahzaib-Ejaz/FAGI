@@ -9,6 +9,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.ticker import NullFormatter, NullLocator
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -65,12 +66,13 @@ def save(fig, out, name, dpi):
     print("wrote", os.path.relpath(path, ROOT))
 
 
-def label_bars(ax, bars, vals, dy=1.0, fs=5.6):
-    for b, v in zip(bars, vals):
+def label_bars(ax, bars, vals, dy=1.0, fs=5.6, rotation=0, errs=None):
+    for i, (b, v) in enumerate(zip(bars, vals)):
         if v is None or np.isnan(v):
             continue
-        ax.text(b.get_x() + b.get_width() / 2, v + dy, f"{v:.1f}", ha="center", va="bottom",
-                fontsize=fs, color=INK)
+        top = v + dy + (errs[i] if errs is not None and errs[i] is not None else 0)
+        ax.text(b.get_x() + b.get_width() / 2, top, f"{v:.1f}", ha="center", va="bottom",
+                fontsize=fs, color=INK, rotation=rotation)
 
 
 def fig_cicids(r, out, dpi):
@@ -85,23 +87,24 @@ def fig_cicids(r, out, dpi):
     b1 = ax.bar(x - w / 2, clean, w, color=C_BASE, label="Clean")
     b2 = ax.bar(x + w / 2, adv, w, color=C_FAGI, hatch="////", edgecolor="white", linewidth=0,
                 label="PGD, $\\epsilon$=0.1, K=20")
-    label_bars(ax, b1, clean)
-    label_bars(ax, b2, adv)
+    label_bars(ax, b1, clean, rotation=90, fs=5.4)
+    label_bars(ax, b2, adv, rotation=90, fs=5.4)
     for xi, v in zip(x, adv):
         if np.isnan(v):
             ax.text(xi + w / 2, 2, "n/a", ha="center", fontsize=5.6, color="#555555")
     ax.set_xticks(x)
     ax.set_xticklabels(names, fontsize=7)
     ax.set_ylabel("Detection accuracy (%)")
-    ax.set_ylim(0, 108)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=2)
+    ax.set_ylim(0, 118)
+    ax.set_yticks([0, 20, 40, 60, 80, 100])
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.13), ncol=2)
     ax.grid(axis="x", visible=False)
     save(fig, out, "fig3a_cicids_benchmark.png", dpi)
 
 
 def fig_api(r, out, dpi):
-    keys = [("rf", "RF"), ("gnn_nopayload", "GNN\n(5 feat.)"), ("gnn", "GNN\n(6 feat.)"),
-            ("fagi_no_payload", "FAGI\n−payload"), ("fagi", "FAGI")]
+    keys = [("rf", "RF"), ("gnn_nopayload", "GNN-5"), ("gnn", "GNN-6"),
+            ("fagi_no_payload", "FAGI−pl."), ("fagi", "FAGI")]
     colors = [C_BASE, C_BASE, C_BASE, C_ALT, C_FAGI]
     panels = [("original", "(a) Original generator"), ("hard", "(b) Hard generator")]
     panels = [(k, t) for k, t in panels if r["api_native"].get(k)]
@@ -112,9 +115,9 @@ def fig_api(r, out, dpi):
         errs = [pct(t[m]["clean_std"]) for m, _ in keys]
         bars = ax.bar(range(len(keys)), vals, color=colors, yerr=errs,
                       error_kw={"elinewidth": 0.6, "capsize": 1.5, "ecolor": INK})
-        label_bars(ax, bars, vals, dy=1.5, fs=5.2)
+        label_bars(ax, bars, vals, dy=1.0, fs=5.2, errs=errs)
         ax.set_xticks(range(len(keys)))
-        ax.set_xticklabels([n for _, n in keys], fontsize=5.6)
+        ax.set_xticklabels([n for _, n in keys], fontsize=5.6, rotation=35, ha="right")
         ax.set_ylim(0, 112)
         ax.set_title(title)
         ax.grid(axis="x", visible=False)
@@ -127,18 +130,21 @@ def fig_adversarial(r, out, dpi):
     series = [("gnn", "GNN baseline", C_S2, "s", "--"),
               ("fagi_no_dp", "FAGI − DP-SGD", C_S3, "^", ":"),
               ("fagi", "FAGI (DP-SGD, $\\sigma$=1.1)", C_FAGI, "o", "-")]
-    gsa = r["graph_structure_attack"]["original"]
-    fig, (a, b) = plt.subplots(1, 2, figsize=(3.5, 2.2), gridspec_kw={"width_ratios": [3, 2]})
+    gsa = r["graph_structure_attack"].get("hard") or r["graph_structure_attack"]["original"]
+    gsa_name = "hard" if r["graph_structure_attack"].get("hard") else "original"
+    fig, (a, b) = plt.subplots(1, 2, figsize=(3.5, 2.3), gridspec_kw={"width_ratios": [3, 2], "wspace": 0.45})
     for key, name, c, mk, ls in series:
         eps = sorted(sweep[key], key=float)
         a.plot([float(e) for e in eps], [pct(sweep[key][e]) for e in eps], color=c, marker=mk,
                linestyle=ls, linewidth=1.4, markersize=4, label=name)
     a.set_xscale("log")
+    a.xaxis.set_minor_locator(NullLocator())
+    a.xaxis.set_minor_formatter(NullFormatter())
     a.set_xticks([0.02, 0.05, 0.1, 0.2, 0.5])
     a.set_xticklabels(["0.02", "0.05", "0.1", "0.2", "0.5"])
     a.set_xlabel("PGD budget $\\epsilon$ (std. units)")
     a.set_ylabel("Accuracy under attack (%)")
-    a.set_title("(a) CICIDS2017, K=20")
+    a.set_title("(a) CICIDS2017 (K=20)")
     a.legend(loc="lower left")
     conds = [("clean", 0), ("edge_40pct", 40), ("edge_80pct", 80)]
     allv = []
@@ -151,7 +157,8 @@ def fig_adversarial(r, out, dpi):
     b.set_xticks([0, 40, 80])
     b.set_xticklabels(["0%", "+40%", "+80%"])
     b.set_xlabel("Injected edges")
-    b.set_title("(b) Synthetic, edge injection")
+    b.set_title(f"(b) Synthetic ({gsa_name})")
+    b.set_ylabel("Accuracy (%)")
     save(fig, out, "fig5_adversarial.png", dpi)
 
 
