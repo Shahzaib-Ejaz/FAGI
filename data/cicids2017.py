@@ -149,7 +149,7 @@ class EgoGraphBuilder:
 
     def fit(self, pool: np.ndarray) -> "EgoGraphBuilder":
         self.pool = pool
-        self.nn = NearestNeighbors(n_neighbors=self.k + 1, algorithm="auto").fit(pool)
+        self.nn = NearestNeighbors(n_neighbors=self.k + 1, algorithm="brute", n_jobs=-1).fit(pool)
         return self
 
     def neighbours(self, Q: np.ndarray, self_index: Optional[np.ndarray] = None) -> np.ndarray:

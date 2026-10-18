@@ -6,68 +6,68 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import numpy as np
 
-from cicids_folds import CONFIG, CICIDSFolds, config_hash
-from common import adversarial_inputs, env_info, mcnemar, mean_std, predict, save_json
+from cicids_folds import CONFIG, CICIDSFolds
+from cicids_stats import ms, paired
+from common import env_info, predict, save_json
 from synthetic_common import SYN_CONFIG, SyntheticData, inject_edges, load_sessions
 
-EPS_SWEEP = [0.02, 0.05, 0.1, 0.2, 0.5]
-STRONG_STEPS = 100
-CICIDS_MODELS = ["gnn", "fagi_no_dp", "fagi"]
+SWEEP_MODELS = ["rf", "knn", "mlp", "mlp_at", "cnn", "gnn", "fagi_no_dp", "fagi"]
+GRAPH = ["gnn", "fagi_no_dp", "fagi"]
 EDGE_RATIOS = {"clean": 0.0, "edge_40pct": 0.4, "edge_80pct": 0.8}
+STRUCT_MODELS = ["gnn", "fagi_no_guard", "fagi_no_dp", "fagi"]
 
 
 def cicids_part(data_path):
-    print("\n[Exp 3a] Feature-space PGD on CICIDS2017 (attacker perturbs the query flow only)")
+    print("\n[Exp 3a] Evasion on CICIDS2017: malicious flows only, worst case over attacks")
     folds = CICIDSFolds(data_path)
-    sweep = {m: {e: [] for e in EPS_SWEEP} for m in CICIDS_MODELS}
-    strong = {m: [] for m in CICIDS_MODELS}
-    reretrieved = {m: [] for m in CICIDS_MODELS}
-    pooled = {m: [] for m in CICIDS_MODELS}
-    y_pool = []
+    eps_list = [str(e) for e in CONFIG["eps_sweep"]]
+    worst = {m: {e: [] for e in eps_list} for m in SWEEP_MODELS}
+    by_attack = {m: {} for m in SWEEP_MODELS}
+    strong, fixed01 = {m: [] for m in GRAPH}, {m: [] for m in GRAPH}
     for f in range(CONFIG["n_folds"]):
-        d = folds.fold(f)
-        y = d["yte"]
-        y_pool.append(y)
-        for m in CICIDS_MODELS:
-            model, blob = folds.graph_model(m, f)
-            pooled[m].append(blob["pred_adv"])
-            for e in EPS_SWEEP:
-                xa = adversarial_inputs(model, d["Gte"], d["Ate"], y, node_mask=d["Mte"], eps=e,
-                                        steps=CONFIG["pgd_eval_steps"], seed=100 + f)
-                sweep[m][e].append(float(np.mean(predict(model, xa, d["Ate"]) == y)))
-                if e == CONFIG["pgd_eps"]:
-                    g2, a2, _ = d["builder"].build(xa[:, 0, :])
-                    reretrieved[m].append(float(np.mean(predict(model, g2, a2) == y)))
-            xs = adversarial_inputs(model, d["Gte"], d["Ate"], y, node_mask=d["Mte"], eps=CONFIG["pgd_eps"],
-                                    steps=STRONG_STEPS, seed=200 + f)
-            strong[m].append(float(np.mean(predict(model, xs, d["Ate"]) == y)))
-        print(f"  fold {f + 1}: " + "  ".join(
-            f"{m} eps0.1={sweep[m][0.1][-1]:.4f}/K100={strong[m][-1]:.4f}" for m in CICIDS_MODELS), flush=True)
-    y_pool = np.concatenate(y_pool)
+        for s in CONFIG["seeds"]:
+            for m in SWEEP_MODELS:
+                b = folds.result(m, f, s)
+                for e in eps_list:
+                    worst[m][e].append(float(b["worst_detected"][e].mean()))
+                    for a, pred in b["attacks"][e].items():
+                        by_attack[m].setdefault(a, {}).setdefault(e, []).append(float(np.mean(pred == 1)))
+                if m in GRAPH:
+                    strong[m].append(float(np.mean(b["attacks"]["strong_k100_fixed"] == 1)))
+                    fixed01[m].append(float(np.mean(b["attacks"]["0.1"]["pgd_fixed_graph"] == 1)))
+        print(f"  fold {f + 1}: " + "  ".join(f"{m}@0.5={np.mean(worst[m]['0.5'][-len(CONFIG['seeds']):]):.3f}"
+                                              for m in ["gnn", "fagi", "knn", "mlp_at"]), flush=True)
     return {
-        "config_hash": config_hash(),
-        "eps_sweep": {m: {str(e): mean_std(v) for e, v in sweep[m].items()} for m in CICIDS_MODELS},
-        "strong_attack_k100_eps0.1": {m: mean_std(v) for m, v in strong.items()},
-        "reretrieved_neighbours_eps0.1": {m: mean_std(v) for m, v in reretrieved.items()},
-        "mcnemar_fagi_vs_gnn_adv": mcnemar(y_pool, np.concatenate(pooled["gnn"]), np.concatenate(pooled["fagi"])),
+        "eps_sweep_worst_recall": {m: {e: ms(v) for e, v in d.items()} for m, d in worst.items()},
+        "by_attack_recall": {m: {a: {e: ms(v) for e, v in d.items()} for a, d in x.items()}
+                             for m, x in by_attack.items()},
+        "strong_k100_fixed_graph_eps0.1": {m: ms(v) for m, v in strong.items()},
+        "k20_fixed_graph_eps0.1": {m: ms(v) for m, v in fixed01.items()},
+        "tests": {f"fagi_vs_{o}_eps{e}": paired(worst["fagi"][e], worst[o][e])
+                  for o in ["gnn", "knn", "mlp_at", "fagi_no_dp"] for e in ["0.1", "0.5"]},
     }
 
 
 def structure_part(api_data):
-    print("\n[Exp 3b] Graph-structure attack on synthetic API sessions (random edge injection)")
+    print("\n[Exp 3b] Random edge injection on synthetic API sessions")
     D = SyntheticData(load_sessions(api_data))
     idx = np.arange(len(D.y))
-    models = ["gnn", "fagi_no_dp", "fagi"]
-    res = {m: {c: [] for c in EDGE_RATIOS} for m in models}
+    res = {m: {c: [] for c in EDGE_RATIOS} for m in STRUCT_MODELS}
+    drop = {m: [] for m in STRUCT_MODELS}
     for f, (tr, te) in enumerate(D.subset_folds(idx)):
-        for m in models:
-            model, _, _, Xte = D.train_variant(m, tr, te, seed_offset=1000 * f)
-            for c, r in EDGE_RATIOS.items():
-                A = D.A[te] if r == 0 else inject_edges(D.A[te], r, seed=300 + f)
-                res[m][c].append(float(np.mean(predict(model, Xte, A) == D.y[te])))
-        print(f"  fold {f + 1}: " + "  ".join(
-            f"{m} clean={res[m]['clean'][-1]:.3f}/+80%={res[m]['edge_80pct'][-1]:.3f}" for m in models), flush=True)
-    return {m: {c: mean_std(v) for c, v in res[m].items()} for m in models}
+        for s in SYN_CONFIG["seeds"]:
+            for m in STRUCT_MODELS:
+                model, _, _, Xte = D.train_variant(m, tr, te, seed_offset=1000 * f + 100 * s)
+                for c, r in EDGE_RATIOS.items():
+                    A = D.A[te] if r == 0 else inject_edges(D.A[te], r, seed=300 + 10 * f + s)
+                    res[m][c].append(float(np.mean(predict(model, Xte, A) == D.y[te])))
+                drop[m].append(res[m]["clean"][-1] - res[m]["edge_80pct"][-1])
+        print(f"  fold {f + 1}: " + "  ".join(f"{m} drop80={drop[m][-1]:.4f}" for m in STRUCT_MODELS),
+              flush=True)
+    return {"accuracy": {m: {c: ms(v) for c, v in d.items()} for m, d in res.items()},
+            "drop_at_80pct": {m: ms(v) for m, v in drop.items()},
+            "tests": {"gnn_vs_fagi_no_guard_drop": paired(drop["gnn"], drop["fagi_no_guard"]),
+                      "fagi_no_guard_vs_fagi_drop": paired(drop["fagi_no_guard"], drop["fagi"])}}
 
 
 def main():

@@ -18,7 +18,7 @@ class FAGIDetector:
         gnnguard_threshold: Optional[float] = 0.15,
         use_adversarial_training: bool = True,
         use_dp: bool = True,
-        dp_delta: float = 1e-5,
+        dp_delta: float = 1e-6,
         dp_sigma: float = 1.1,
         dp_clip_norm: float = 1.0,
         include_payload: bool = True,

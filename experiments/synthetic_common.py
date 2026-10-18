@@ -6,7 +6,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import StratifiedKFold
 
 from common import (ROOT, DenseFAGI, adversarial_inputs, predict, set_seed, train_model)
-from fagi.graph.dense import NodeFeatureScaler, sessions_to_dense
+from fagi.graph.dense import sessions_to_dense
 
 SYN_CONFIG = {
     "n_folds": 5,
@@ -20,8 +20,10 @@ SYN_CONFIG = {
     "pgd_eval_steps": 20,
     "dp_sigma": 1.1,
     "dp_clip": 1.0,
-    "dp_delta": 1e-5,
+    "dp_delta": 1e-6,
     "init": "reset_after_seed",
+    "scaling": "log1p",
+    "seeds": [0],
 }
 
 SYN_VARIANTS = {
@@ -33,6 +35,10 @@ SYN_VARIANTS = {
     "fagi_no_pgd": {"payload": True, "guard": True, "adv": False, "dp": True, "seed": 46},
     "fagi_no_dp": {"payload": True, "guard": True, "adv": True, "dp": False, "seed": 47},
 }
+
+
+def log_features(X):
+    return np.log1p(np.maximum(X, 0.0)).astype(np.float32)
 
 
 def load_sessions(path=None):
@@ -59,8 +65,7 @@ class SyntheticData:
         return [(idx[a], idx[b]) for a, b in skf.split(np.zeros(len(idx)), strat)]
 
     def scaled(self, payload, tr, te):
-        sc = NodeFeatureScaler().fit(self.X[payload][tr], self.M[tr])
-        return sc.transform(self.X[payload][tr]), sc.transform(self.X[payload][te])
+        return log_features(self.X[payload][tr]), log_features(self.X[payload][te])
 
     def train_variant(self, name, tr, te, seed_offset=0, epochs=None):
         v = SYN_VARIANTS[name]

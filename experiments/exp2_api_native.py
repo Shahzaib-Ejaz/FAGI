@@ -47,27 +47,29 @@ def main():
         y_pool = []
         for f, (tr, te) in enumerate(D.subset_folds(idx)):
             y_pool.append(D.y[te])
-            for m in TASK_MODELS[task]:
-                if m == "rf":
-                    pc, adv, eps = D.rf(tr, te, seed=100 + f), None, None
-                else:
-                    model, info, _, Xte = D.train_variant(m, tr, te, seed_offset=1000 * f)
-                    r = D.evaluate(model, Xte, te, seed=7 + f)
-                    pc, adv, eps = r["pred_clean"], r["adv"], info.get("epsilon")
-                mm = metrics(D.y[te], pc)
-                res[m]["acc"].append(mm["accuracy"])
-                res[m]["fpr"].append(mm["fpr"])
-                res[m]["dr"].append(mm["detection_rate"])
-                res[m]["f1"].append(mm["f1"])
-                res[m]["adv"].append(adv)
-                res[m]["eps"].append(eps)
-                pooled[m].append(pc)
-                for t in np.unique(D.attack_type[te]):
-                    mask = D.attack_type[te] == t
-                    want = 0 if t == "none" else 1
-                    per_type[m].setdefault(t, []).append(float(np.mean(pc[mask] == want)))
-            print(f"    fold {f + 1}: " + "  ".join(f"{m}={res[m]['acc'][-1]:.3f}" for m in TASK_MODELS[task]),
-                  flush=True)
+            for sd in SYN_CONFIG["seeds"]:
+                for m in TASK_MODELS[task]:
+                    if m == "rf":
+                        pc, adv, eps = D.rf(tr, te, seed=100 + 10 * f + sd), None, None
+                    else:
+                        model, info, _, Xte = D.train_variant(m, tr, te, seed_offset=1000 * f + 100 * sd)
+                        r = D.evaluate(model, Xte, te, seed=7 + 10 * f + sd)
+                        pc, adv, eps = r["pred_clean"], r["adv"], info.get("epsilon")
+                    mm = metrics(D.y[te], pc)
+                    res[m]["acc"].append(mm["accuracy"])
+                    res[m]["fpr"].append(mm["fpr"])
+                    res[m]["dr"].append(mm["detection_rate"])
+                    res[m]["f1"].append(mm["f1"])
+                    res[m]["adv"].append(adv)
+                    res[m]["eps"].append(eps)
+                    if sd == SYN_CONFIG["seeds"][0]:
+                        pooled[m].append(pc)
+                    for t in np.unique(D.attack_type[te]):
+                        mask = D.attack_type[te] == t
+                        want = 0 if t == "none" else 1
+                        per_type[m].setdefault(t, []).append(float(np.mean(pc[mask] == want)))
+            print(f"    fold {f + 1}: " + "  ".join(f"{m}={np.mean(res[m]['acc'][-len(SYN_CONFIG['seeds']):]):.3f}"
+                                                  for m in TASK_MODELS[task]), flush=True)
         y_pool = np.concatenate(y_pool)
         tout = {"n_sessions": int(len(idx)), "models": {}}
         for m in TASK_MODELS[task]:

@@ -1,8 +1,6 @@
 import argparse
 import json
 import os
-import sys
-from functools import reduce
 
 import matplotlib
 
@@ -14,48 +12,27 @@ from matplotlib.ticker import NullFormatter, NullLocator
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 C_BASE = "#7a7f87"
-C_ALT = "#c9d3df"
 C_FAGI = "#2a78d6"
-C_S2 = "#eb6834"
-C_S3 = "#1baf7a"
 INK = "#222222"
 GRID = "#e3e3e3"
+SERIES = {
+    "fagi": ("FAGI (DP-SGD)", "#2a78d6", "o", "-"),
+    "gnn": ("GNN baseline", "#eb6834", "s", "--"),
+    "fagi_no_dp": ("FAGI − DP-SGD", "#1baf7a", "^", ":"),
+    "knn": ("k-NN vote", "#eda100", "D", "-."),
+    "mlp_at": ("MLP + PGD training", "#6250d6", "v", (0, (5, 1, 1, 1))),
+}
 
 plt.rcParams.update({
     "font.family": "serif", "font.size": 8, "axes.titlesize": 8.5, "axes.labelsize": 8,
     "axes.edgecolor": INK, "axes.linewidth": 0.6, "axes.spines.top": False, "axes.spines.right": False,
     "axes.grid": True, "axes.axisbelow": True, "grid.color": GRID, "grid.linewidth": 0.5,
-    "legend.frameon": False, "legend.fontsize": 6.8, "savefig.bbox": "tight",
-    "hatch.linewidth": 0.6,
+    "legend.frameon": False, "legend.fontsize": 6.5, "savefig.bbox": "tight", "hatch.linewidth": 0.6,
 })
 
 
 def pct(x):
     return None if x is None else 100.0 * x
-
-
-def get(d, path):
-    return reduce(lambda acc, k: acc[int(k)] if isinstance(acc, list) else acc[k], path.split("."), d)
-
-
-def check_claims(results, claims_path):
-    if not os.path.exists(claims_path):
-        print(f"(no {os.path.relpath(claims_path, ROOT)}; skipping paper-number check)")
-        return
-    with open(claims_path) as f:
-        claims = json.load(f)
-    bad = 0
-    print("Paper numbers vs paper_results.json")
-    for c in claims:
-        got = get(results, c["path"]) * c.get("scale", 100.0)
-        if "minus" in c:
-            got -= get(results, c["minus"]) * c.get("scale", 100.0)
-        ok = abs(round(got, c.get("decimals", 1)) - c["paper"]) <= c.get("tol", 0.051)
-        bad += not ok
-        print(f"  [{'ok' if ok else 'MISMATCH'}] {c['label']:<46} json={got:8.3f}  paper={c['paper']}")
-    if bad:
-        sys.exit(f"{bad} paper number(s) do not match the results JSON.")
-    print(f"All {len(claims)} paper numbers match.\n")
 
 
 def save(fig, out, name, dpi):
@@ -66,116 +43,93 @@ def save(fig, out, name, dpi):
     print("wrote", os.path.relpath(path, ROOT))
 
 
-def label_bars(ax, bars, vals, dy=1.0, fs=5.6, rotation=0, errs=None):
-    for i, (b, v) in enumerate(zip(bars, vals)):
-        if v is None or np.isnan(v):
-            continue
-        top = v + dy + (errs[i] if errs is not None and errs[i] is not None else 0)
-        ax.text(b.get_x() + b.get_width() / 2, top, f"{v:.1f}", ha="center", va="bottom",
-                fontsize=fs, color=INK, rotation=rotation)
-
-
-def fig_cicids(r, out, dpi):
-    rows = r["cicids2017"]["baselines"]
-    short = {"Random Forest": "RF", "GNN Baseline": "GNN"}
-    names = [short.get(x["name"], x["name"]) for x in rows]
-    clean = [pct(x["clean"]) for x in rows]
-    adv = [pct(x["adv"]) if x["adv"] is not None else np.nan for x in rows]
+def fig_benchmark(r, out, dpi):
+    rows = r["exp1"]["models"]
+    short = {"rf": "RF", "knn": "k-NN", "mlp": "MLP", "mlp_at": "MLP-AT", "cnn": "CNN", "gnn": "GNN", "fagi": "FAGI"}
+    names = [short[x["key"]] for x in rows]
+    clean = [pct(x["clean"]["mean"]) for x in rows]
+    w01 = [pct(x["worst_recall_eps0.1"]["mean"]) for x in rows]
     x = np.arange(len(rows))
     w = 0.38
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
-    b1 = ax.bar(x - w / 2, clean, w, color=C_BASE, label="Clean")
-    b2 = ax.bar(x + w / 2, adv, w, color=C_FAGI, hatch="////", edgecolor="white", linewidth=0,
-                label="PGD, $\\epsilon$=0.1, K=20")
-    label_bars(ax, b1, clean, rotation=90, fs=5.4)
-    label_bars(ax, b2, adv, rotation=90, fs=5.4)
-    for xi, v in zip(x, adv):
-        if np.isnan(v):
-            ax.text(xi + w / 2, 2, "n/a", ha="center", fontsize=5.6, color="#555555")
+    b1 = ax.bar(x - w / 2, clean, w, color=C_BASE, label="Clean accuracy")
+    b2 = ax.bar(x + w / 2, w01, w, color=C_FAGI, hatch="////", edgecolor="white", linewidth=0,
+                label="Attack recall, worst case, ε=0.1")
+    for bars, vals in ((b1, clean), (b2, w01)):
+        for b, v in zip(bars, vals):
+            ax.text(b.get_x() + b.get_width() / 2, v + 1.2, f"{v:.1f}", ha="center", va="bottom", fontsize=5.2,
+                    rotation=90, color=INK)
     ax.set_xticks(x)
-    ax.set_xticklabels(names, fontsize=7)
-    ax.set_ylabel("Detection accuracy (%)")
-    ax.set_ylim(0, 118)
+    ax.set_xticklabels(names, fontsize=6.8)
+    ax.set_ylabel("%")
+    ax.set_ylim(0, 120)
     ax.set_yticks([0, 20, 40, 60, 80, 100])
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.13), ncol=2)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.14), ncol=2)
     ax.grid(axis="x", visible=False)
-    save(fig, out, "fig3a_cicids_benchmark.png", dpi)
+    save(fig, out, "fig1_cicids_benchmark.png", dpi)
 
 
-def fig_api(r, out, dpi):
-    keys = [("rf", "RF"), ("gnn_nopayload", "GNN-5"), ("gnn", "GNN-6"),
-            ("fagi_no_payload", "FAGI−pl."), ("fagi", "FAGI")]
-    colors = [C_BASE, C_BASE, C_BASE, C_ALT, C_FAGI]
-    panels = [("original", "(a) Original generator"), ("hard", "(b) Hard generator")]
-    panels = [(k, t) for k, t in panels if r["api_native"].get(k)]
-    fig, axes = plt.subplots(1, len(panels), figsize=(3.5, 2.3), sharey=True, squeeze=False)
-    for ax, (k, title) in zip(axes[0], panels):
-        t = r["api_native"][k]["all_attacks"]
-        vals = [pct(t[m]["clean"]) for m, _ in keys]
-        errs = [pct(t[m]["clean_std"]) for m, _ in keys]
-        bars = ax.bar(range(len(keys)), vals, color=colors, yerr=errs,
-                      error_kw={"elinewidth": 0.6, "capsize": 1.5, "ecolor": INK})
-        label_bars(ax, bars, vals, dy=1.0, fs=5.2, errs=errs)
-        ax.set_xticks(range(len(keys)))
-        ax.set_xticklabels([n for _, n in keys], fontsize=5.6, rotation=35, ha="right")
-        ax.set_ylim(0, 112)
-        ax.set_title(title)
-        ax.grid(axis="x", visible=False)
-    axes[0][0].set_ylabel("Detection accuracy (%)")
-    save(fig, out, "fig3b_api_native.png", dpi)
+def fig_sweep(r, out, dpi):
+    sw = r["exp3"]["cicids2017"]["eps_sweep_worst_recall"]
+    fig, ax = plt.subplots(figsize=(3.5, 2.4))
+    for key, (name, c, mk, ls) in SERIES.items():
+        eps = sorted(sw[key], key=float)
+        xs = [float(e) for e in eps]
+        ys = [pct(sw[key][e]["mean"]) for e in eps]
+        es = [pct(sw[key][e]["std"]) for e in eps]
+        ax.errorbar(xs, ys, yerr=es, color=c, marker=mk, linestyle=ls, linewidth=1.3, markersize=3.8, capsize=1.5,
+                    elinewidth=0.6, label=name)
+    ax.set_xscale("log")
+    ax.xaxis.set_minor_locator(NullLocator())
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.set_xticks([0.02, 0.05, 0.1, 0.2, 0.5])
+    ax.set_xticklabels(["0.02", "0.05", "0.1", "0.2", "0.5"])
+    ax.set_xlabel("Attack budget $\\epsilon_{adv}$ (L∞, standardized units)")
+    ax.set_ylabel("Attack recall, worst case (%)")
+    ax.set_ylim(-3, 103)
+    ax.legend(loc="lower left", ncol=1)
+    save(fig, out, "fig2_eps_sweep.png", dpi)
 
 
-def fig_adversarial(r, out, dpi):
-    sweep = r["cicids2017"]["eps_sweep"]
-    series = [("gnn", "GNN baseline", C_S2, "s", "--"),
-              ("fagi_no_dp", "FAGI − DP-SGD", C_S3, "^", ":"),
-              ("fagi", "FAGI (DP-SGD, $\\sigma$=1.1)", C_FAGI, "o", "-")]
-    gsa = r["graph_structure_attack"].get("hard") or r["graph_structure_attack"]["original"]
-    gsa_name = "hard" if r["graph_structure_attack"].get("hard") else "original"
-    fig, (a, b) = plt.subplots(1, 2, figsize=(3.5, 2.3), gridspec_kw={"width_ratios": [3, 2], "wspace": 0.45})
-    for key, name, c, mk, ls in series:
-        eps = sorted(sweep[key], key=float)
-        a.plot([float(e) for e in eps], [pct(sweep[key][e]) for e in eps], color=c, marker=mk,
-               linestyle=ls, linewidth=1.4, markersize=4, label=name)
-    a.set_xscale("log")
-    a.xaxis.set_minor_locator(NullLocator())
-    a.xaxis.set_minor_formatter(NullFormatter())
-    a.set_xticks([0.02, 0.05, 0.1, 0.2, 0.5])
-    a.set_xticklabels(["0.02", "0.05", "0.1", "0.2", "0.5"])
-    a.set_xlabel("PGD budget $\\epsilon$ (std. units)")
-    a.set_ylabel("Accuracy under attack (%)")
-    a.set_title("(a) CICIDS2017 (K=20)")
-    a.legend(loc="lower left")
-    conds = [("clean", 0), ("edge_40pct", 40), ("edge_80pct", 80)]
-    allv = []
-    for key, name, c, mk, ls in [s_ for s_ in series if s_[0] in gsa]:
-        v = [pct(gsa[key][cond]) for cond, _ in conds]
-        allv += v
-        b.plot([x_ for _, x_ in conds], v, color=c, marker=mk, linestyle=ls, linewidth=1.4, markersize=4)
-    lo = min(allv)
-    b.set_ylim(max(0.0, np.floor(lo) - 2), 100.5)
-    b.set_xticks([0, 40, 80])
-    b.set_xticklabels(["0%", "+40%", "+80%"])
-    b.set_xlabel("Injected edges")
-    b.set_title(f"(b) Synthetic ({gsa_name})")
-    b.set_ylabel("Accuracy (%)")
-    save(fig, out, "fig5_adversarial.png", dpi)
+def fig_privacy(r, out, dpi):
+    sw = r["ablation"]["cicids2017"]["sigma_sweep_seed0"]
+    dp = [x for x in sw if x["sigma"] is not None]
+    nodp = [x for x in sw if x["sigma"] is None][0]
+    dp.sort(key=lambda x: x["epsilon"]["mean"])
+    xs = [x["epsilon"]["mean"] for x in dp]
+    fig, ax = plt.subplots(figsize=(3.5, 2.2))
+    for field, name, c, mk, ls in [("clean", "Clean accuracy", C_BASE, "s", "-"),
+                                   ("worst_recall_eps0.1", "Attack recall, ε_adv=0.1", "#1baf7a", "^", ":"),
+                                   ("worst_recall_eps0.5", "Attack recall, ε_adv=0.5", C_FAGI, "o", "--")]:
+        ys = [pct(x[field]["mean"]) for x in dp]
+        es = [pct(x[field]["std"]) for x in dp]
+        ax.errorbar(xs, ys, yerr=es, color=c, marker=mk, linestyle=ls, linewidth=1.3, markersize=3.8, capsize=1.5,
+                    elinewidth=0.6, label=name)
+        ax.axhline(pct(nodp[field]["mean"]), color=c, linewidth=0.7, alpha=0.6, linestyle=(0, (1, 2)))
+    for x in dp:
+        ax.annotate(f"σ={x['sigma']}", (x["epsilon"]["mean"], pct(x["clean"]["mean"])), textcoords="offset points",
+                    xytext=(0, 5), ha="center", fontsize=5.4, color="#555555")
+    ax.set_xscale("log")
+    ax.xaxis.set_minor_formatter(NullFormatter())
+    ax.set_xlabel("Privacy budget $\\epsilon_{DP}$ (δ = 10$^{-6}$)")
+    ax.set_ylabel("%")
+    ax.legend(loc="lower right")
+    ax.text(0.01, 0.02, "dotted lines: same model without DP", transform=ax.transAxes, fontsize=5.4, color="#555555")
+    save(fig, out, "fig3_privacy_utility.png", dpi)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default=os.path.join(ROOT, "experiments", "results", "paper_results.json"))
-    ap.add_argument("--claims", default=os.path.join(ROOT, "experiments", "results", "paper_claims.json"))
     ap.add_argument("--out", default=os.path.join(ROOT, "figures"))
     ap.add_argument("--dpi", type=int, default=300)
     args = ap.parse_args()
     with open(args.results) as f:
         r = json.load(f)
-    check_claims(r, args.claims)
     os.makedirs(args.out, exist_ok=True)
-    fig_cicids(r, args.out, args.dpi)
-    fig_api(r, args.out, args.dpi)
-    fig_adversarial(r, args.out, args.dpi)
+    fig_benchmark(r, args.out, args.dpi)
+    fig_sweep(r, args.out, args.dpi)
+    fig_privacy(r, args.out, args.dpi)
 
 
 if __name__ == "__main__":

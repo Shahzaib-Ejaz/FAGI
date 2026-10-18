@@ -1,0 +1,11 @@
+# Exact versions used to produce the paper results (Python 3.13.16, CPU).
+torch==2.14.1
+torch-geometric==2.8.1
+scikit-learn==1.9.1
+numpy==2.5.3
+pandas==3.0.5
+matplotlib==3.11.2
+scipy==1.18.1
+opacus==1.6.0
+tqdm==4.70.1
+pytest==9.1.1
