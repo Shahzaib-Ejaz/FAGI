@@ -15,6 +15,7 @@ H=data/synthetic/sessions_hard.json
 
 $PY experiments/cicids_compute.py --extra 2>&1 | tee "$LOG/cicids_compute.log"
 $PY experiments/exp1_cicids_benchmark.py 2>&1 | tee "$LOG/exp1.log"
+$PY experiments/mia_canary.py 2>&1 | tee "$LOG/mia_canary.log"
 $PY experiments/ablation.py --skip_synthetic 2>&1 | tee "$LOG/ablation.log"
 $PY experiments/exp3_adversarial_robustness.py --api_data $H 2>&1 | tee "$LOG/exp3.log"
 $PY experiments/exp2_api_native.py 2>&1 | tee "$LOG/exp2.log"
