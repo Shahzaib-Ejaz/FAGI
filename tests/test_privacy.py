@@ -62,7 +62,7 @@ class TestMVGMechanism:
             if p.grad is not None
         )).item()
 
-        assert True
+        assert total_norm <= 1.0 + 1e-4
 
     def test_epsilon_estimate_reasonable(self):
         eps = MVGMechanism.compute_epsilon(
@@ -76,6 +76,7 @@ class TestMVGMechanism:
         eps_low  = MVGMechanism.compute_epsilon(0.5, 1.0, 50, 1e-5)
         eps_high = MVGMechanism.compute_epsilon(2.0, 1.0, 50, 1e-5)
         assert isinstance(eps_low, float) and isinstance(eps_high, float)
+        assert eps_high < eps_low
 
     def test_device_cpu(self):
         dp = MVGMechanism(device="cpu")

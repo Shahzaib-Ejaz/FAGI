@@ -20,6 +20,7 @@ setup(
         "pandas>=2.0.0",
         "matplotlib>=3.7.0",
         "scipy>=1.11.0",
+        "opacus>=1.4.0",
         "tqdm>=4.65.0",
     ],
     classifiers=[

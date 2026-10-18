@@ -39,8 +39,15 @@ ORG_ATTACKS = {
 }
 
 
+HARD = {"enabled": False}
+BENIGN_TOKENS = ["json", "data", "ok", "api", "v2"]
+POWER_USER_TOKENS = [["admin", "report"], ["bulk", "export"], ["SELECT", "report"], ["AND", "filter"], ["OR", "filter"]]
+
+
 def _make_call(src: str, dst: str, atype: str = None) -> dict:
     priv = ENDPOINTS[dst]["priv"]
+    if HARD["enabled"] and atype in ("sql", "lat", "exf", "rec") and random.random() < 0.5:
+        atype = "camouflage"
     dur  = abs(np.random.normal(350 + priv * 60, 120))
     size = abs(np.random.normal(700 + priv * 150, 150))
 
@@ -57,8 +64,10 @@ def _make_call(src: str, dst: str, atype: str = None) -> dict:
         size  *= 5
     elif atype == "rec":
         tokens = ["OPTIONS", "enumerate", "schema"]
+    elif atype == "power":
+        tokens = list(random.choice(POWER_USER_TOKENS))
     else:
-        tokens = random.sample(["json", "data", "ok", "api", "v2"], 2)
+        tokens = random.sample(BENIGN_TOKENS, 2)
 
     method = "POST" if random.random() < 0.35 else "GET"
     return {
@@ -81,6 +90,9 @@ def _benign_session(org_id: int) -> dict:
     calls = [_make_call(src, "auth")]
     for _ in range(random.randint(6, 14)):
         calls.append(_make_call(src, random.choice(chosen)))
+    if HARD["enabled"] and random.random() < 0.3:
+        for _ in range(random.randint(1, 3)):
+            calls.append(_make_call(src, random.choice(["admin_read", "admin_write", "data_export", "data_query"]), "power"))
     return {"calls": calls, "label": 0, "attack_type": "none", "org_id": org_id}
 
 
@@ -146,7 +158,11 @@ def generate_dataset(
     n_per_org_per_attack: int = 125,
     org_attacks: dict = None,
     seed: int = 42,
+    difficulty: str = "original",
 ) -> List[dict]:
+    if difficulty not in ("original", "hard"):
+        raise ValueError("difficulty must be 'original' or 'hard'")
+    HARD["enabled"] = difficulty == "hard"
     random.seed(seed)
     np.random.seed(seed)
 
@@ -177,6 +193,7 @@ def main():
     parser.add_argument("--n_attack", type=int, default=125,
                         help="Attack sessions per (org, type)")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--difficulty", choices=["original", "hard"], default="original")
     args = parser.parse_args()
 
     print("Generating dataset...")
@@ -184,6 +201,7 @@ def main():
         n_per_org_benign=args.n_benign,
         n_per_org_per_attack=args.n_attack,
         seed=args.seed,
+        difficulty=args.difficulty,
     )
 
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)

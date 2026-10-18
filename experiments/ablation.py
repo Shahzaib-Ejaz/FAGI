@@ -1,148 +1,101 @@
-import json
 import argparse
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import numpy as np
-import torch
-import torch.nn.functional as F
-import warnings
-warnings.filterwarnings("ignore")
 
-from sklearn.model_selection import StratifiedKFold
+from cicids_folds import CONFIG, GRAPH_VARIANTS, CICIDSFolds, config_hash
+from common import env_info, mean_std, membership_inference, metrics, save_json
+from synthetic_common import SYN_CONFIG, SYN_VARIANTS, SyntheticData, load_sessions
 
-from fagi.model.gnn import FAGIModel
-from fagi.model.pgd import adversarial_loss, pgd_attack
-from fagi.model.gnnguard import gnnguard_filter
-from fagi.utils.metrics import detection_accuracy
-
-
-ABLATION_CONFIGS = {
-    "FAGI (full)": {
-        "in_dim": 6, "gnnguard": 0.15,
-        "adv_train": True, "dp_noise": True,
-    },
-    "FAGI − LLM": {
-        "in_dim": 5, "gnnguard": 0.15,
-        "adv_train": True, "dp_noise": True,
-    },
-    "FAGI − GNNGuard": {
-        "in_dim": 6, "gnnguard": None,
-        "adv_train": True, "dp_noise": True,
-    },
-    "FAGI − PGD": {
-        "in_dim": 6, "gnnguard": 0.15,
-        "adv_train": False, "dp_noise": True,
-    },
-    "FAGI − Federated": {
-        "in_dim": 6, "gnnguard": 0.15,
-        "adv_train": True, "dp_noise": False,
-    },
-    "GNN Baseline": {
-        "in_dim": 5, "gnnguard": None,
-        "adv_train": False, "dp_noise": False,
-    },
-}
+CICIDS_ROWS = [
+    ("FAGI (full)", "fagi"),
+    ("FAGI - GNNGuard", "fagi_no_guard"),
+    ("FAGI - PGD", "fagi_no_pgd"),
+    ("FAGI - DP-SGD", "fagi_no_dp"),
+    ("GNN Baseline", "gnn"),
+]
+SYN_ROWS = [
+    ("FAGI (full)", "fagi"),
+    ("FAGI - payload feature", "fagi_no_payload"),
+    ("FAGI - GNNGuard", "fagi_no_guard"),
+    ("FAGI - PGD", "fagi_no_pgd"),
+    ("FAGI - DP-SGD", "fagi_no_dp"),
+    ("GNN Baseline (no payload)", "gnn_nopayload"),
+]
 
 
-def train_ablation(model, graphs, epochs=25, adv=False, dp_noise=False):
-    opt = torch.optim.Adam(model.parameters(), lr=2e-3, weight_decay=1e-4)
-    for e in range(epochs):
-        model.train()
-        idx = np.random.permutation(len(graphs))[:min(300, len(graphs))]
-        for i in idx:
-            g = graphs[i]; opt.zero_grad()
-            if adv and e % 2 == 0:
-                loss = adversarial_loss(model, g.x, g.edge_index, g.y,
-                                        epsilon=0.1, pgd_steps=10)
-            else:
-                loss = F.cross_entropy(model(g.x, g.edge_index), g.y)
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            if dp_noise:
-                with torch.no_grad():
-                    for p in model.parameters():
-                        if p.grad is not None:
-                            p.grad += torch.randn_like(p.grad) * 0.004
-            opt.step()
-    return model
+def cicids(data_path):
+    print("\n[Ablation] CICIDS2017")
+    folds = CICIDSFolds(data_path)
+    res = {k: {"clean": [], "adv": [], "fpr": [], "eps": [], "mia_auc": [], "mia_acc": []} for _, k in CICIDS_ROWS}
+    for f in range(CONFIG["n_folds"]):
+        d = folds.fold(f)
+        for _, k in CICIDS_ROWS:
+            model, blob = folds.graph_model(k, f)
+            m = metrics(d["yte"], blob["pred_clean"])
+            res[k]["clean"].append(m["accuracy"])
+            res[k]["fpr"].append(m["fpr"])
+            res[k]["adv"].append(float(np.mean(blob["pred_adv"] == d["yte"])))
+            res[k]["eps"].append(blob["info"].get("epsilon"))
+            ltr, lte = folds.losses(model, f)
+            mia = membership_inference(ltr, lte, seed=f)
+            res[k]["mia_auc"].append(mia["auc"])
+            res[k]["mia_acc"].append(mia["attack_accuracy"])
+        print(f"  fold {f + 1}: " + "  ".join(f"{k}={res[k]['clean'][-1]:.4f}/{res[k]['adv'][-1]:.4f}"
+                                              for _, k in CICIDS_ROWS), flush=True)
+    return rows(CICIDS_ROWS, res, GRAPH_VARIANTS)
 
 
-def eval_ablation(model, graphs, adv=False, use_guard=False):
-    model.eval(); preds = []
-    for g in graphs:
-        if adv:
-            x_adv = pgd_attack(model, g.x, g.edge_index, g.y,
-                                epsilon=0.1, steps=10)
-            ei = gnnguard_filter(x_adv, g.edge_index) if use_guard else g.edge_index
-            with torch.no_grad():
-                preds.append(model(x_adv, ei).argmax(1).item())
-        else:
-            ei = gnnguard_filter(g.x, g.edge_index) if use_guard else g.edge_index
-            with torch.no_grad():
-                preds.append(model(g.x, ei).argmax(1).item())
-    return np.array(preds)
+def synthetic(api_data):
+    print("\n[Ablation] synthetic API sessions")
+    D = SyntheticData(load_sessions(api_data))
+    idx = np.arange(len(D.y))
+    res = {k: {"clean": [], "adv": [], "fpr": [], "eps": []} for _, k in SYN_ROWS}
+    for f, (tr, te) in enumerate(D.subset_folds(idx)):
+        for _, k in SYN_ROWS:
+            model, info, _, Xte = D.train_variant(k, tr, te, seed_offset=1000 * f)
+            r = D.evaluate(model, Xte, te, seed=7 + f)
+            res[k]["clean"].append(r["clean"])
+            res[k]["adv"].append(r["adv"])
+            res[k]["fpr"].append(metrics(D.y[te], r["pred_clean"])["fpr"])
+            res[k]["eps"].append(info.get("epsilon"))
+        print(f"  fold {f + 1}: " + "  ".join(f"{k}={res[k]['clean'][-1]:.3f}/{res[k]['adv'][-1]:.3f}"
+                                              for _, k in SYN_ROWS), flush=True)
+    return rows(SYN_ROWS, res, SYN_VARIANTS)
+
+
+def rows(spec, res, variants):
+    out = []
+    for name, k in spec:
+        r = res[k]
+        row = {"name": name, "key": k, "clean": mean_std(r["clean"]), "adv": mean_std(r["adv"]),
+               "fpr": mean_std(r["fpr"]), "dp": variants[k]["dp"],
+               "epsilon": mean_std(r["eps"]) if variants[k]["dp"] else None}
+        if "mia_auc" in r:
+            row["mia_auc"] = mean_std(r["mia_auc"])
+            row["mia_attack_accuracy"] = mean_std(r["mia_acc"])
+        out.append(row)
+        print(f"  {name:<28} clean {row['clean']['mean'] * 100:6.2f}  adv {row['adv']['mean'] * 100:6.2f}")
+    return out
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", default="data/cicids2017/")
-    parser.add_argument("--n_folds", type=int, default=5)
-    parser.add_argument("--output", default="experiments/results/ablation.json")
-    args = parser.parse_args()
-
-    print("ABLATION STUDY — Table I Reproduction")
-    print("=" * 60)
-
-    try:
-        from data.cicids2017 import load_cicids2017_graphs
-        G5, G6, y = load_cicids2017_graphs(args.data_path)
-        print(f"Loaded {len(y)} CICIDS2017 graphs.")
-    except Exception as e:
-        sys.exit(f"Could not load CICIDS2017 from {args.data_path}: {e}")
-
-    skf = StratifiedKFold(args.n_folds, shuffle=True, random_state=42)
-    results = {name: {"clean": [], "adv": []} for name in ABLATION_CONFIGS}
-
-    for fold, (tr, te) in enumerate(skf.split(np.zeros(len(y)), y)):
-        print(f"\nFold {fold+1}/{args.n_folds}")
-        for name, cfg in ABLATION_CONFIGS.items():
-            graphs = G6 if cfg["in_dim"] == 6 else G5
-            G_tr = [graphs[i] for i in tr]
-            G_te = [graphs[i] for i in te]
-            y_te = y[te]
-
-            model = FAGIModel(in_dim=cfg["in_dim"],
-                              gnnguard_threshold=cfg["gnnguard"])
-            train_ablation(model, G_tr, epochs=25,
-                           adv=cfg["adv_train"], dp_noise=cfg["dp_noise"])
-
-            use_guard = cfg["gnnguard"] is not None
-            pc = eval_ablation(model, G_te, adv=False, use_guard=use_guard)
-            pa = eval_ablation(model, G_te, adv=True,  use_guard=use_guard)
-
-            c_acc = detection_accuracy(y_te, pc)
-            a_acc = detection_accuracy(y_te, pa)
-            results[name]["clean"].append(c_acc)
-            results[name]["adv"].append(a_acc)
-            print(f"  {name:<22} clean={c_acc*100:.1f}%  adv={a_acc*100:.1f}%")
-
-    print("\n\n=== FINAL RESULTS (Table I) ===")
-    print(f"{'Variant':<22} {'Clean':>8} {'Adv':>8} {'DP':>5}")
-    print("-" * 48)
-    final = {}
-    for name, cfg in ABLATION_CONFIGS.items():
-        c = np.mean(results[name]["clean"])
-        a = np.mean(results[name]["adv"])
-        dp = cfg["dp_noise"]
-        final[name] = {
-            "clean_mean": float(c), "clean_std": float(np.std(results[name]["clean"])),
-            "adv_mean": float(a),   "adv_std":   float(np.std(results[name]["adv"])),
-            "dp": dp,
-        }
-        print(f"{name:<22} {c*100:>7.1f}% {a*100:>7.1f}% {'✓' if dp else '✗':>5}")
-
-    with open(args.output, "w") as f:
-        json.dump(final, f, indent=2)
-    print(f"\nResults saved to {args.output}")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data_path", default="data/cicids2017/")
+    ap.add_argument("--api_data", default=None)
+    ap.add_argument("--output", default="experiments/results/ablation.json")
+    ap.add_argument("--skip_cicids", action="store_true")
+    args = ap.parse_args()
+    print("ABLATION STUDY")
+    out = {"env": env_info(), "cicids_config": CONFIG, "cicids_config_hash": config_hash(),
+           "synthetic_config": SYN_CONFIG}
+    if not args.skip_cicids:
+        out["cicids2017"] = cicids(args.data_path)
+    out["synthetic"] = synthetic(args.api_data)
+    save_json(out, args.output)
 
 
 if __name__ == "__main__":

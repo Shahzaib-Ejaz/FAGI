@@ -31,10 +31,7 @@ class MVGMechanism:
         clip_norm: float,
         n_rounds: int,
         delta: float = 1e-5,
+        sample_rate: float = 1.0,
     ) -> float:
-        import math
-        q = 1.0
-        alpha = 10
-        rdp = alpha * q**2 / (2 * sigma**2) * n_rounds
-        epsilon = rdp + math.log(1 / delta) / (alpha - 1)
-        return epsilon
+        from fagi.privacy.dp_sgd import compute_epsilon
+        return compute_epsilon(sigma, sample_rate, n_rounds, delta)

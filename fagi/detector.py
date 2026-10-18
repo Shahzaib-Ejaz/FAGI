@@ -1,13 +1,12 @@
-import copy
-import torch
-import torch.nn.functional as F
-import numpy as np
 from typing import List, Optional
 
-from fagi.graph.constructor import APIGraphConstructor
-from fagi.model.gnn import FAGIModel
-from fagi.model.pgd import adversarial_loss
-from fagi.privacy.mvg_dp import MVGMechanism
+import numpy as np
+import torch
+import torch.nn.functional as F
+
+from fagi.graph.dense import NodeFeatureScaler, sessions_to_dense
+from fagi.model.dense import DenseFAGI
+from fagi.training import T, adversarial_inputs, predict, train_model
 
 
 class FAGIDetector:
@@ -18,12 +17,14 @@ class FAGIDetector:
         pgd_steps: int = 10,
         gnnguard_threshold: Optional[float] = 0.15,
         use_adversarial_training: bool = True,
-        dp_epsilon: float = 2.0,
+        use_dp: bool = True,
         dp_delta: float = 1e-5,
         dp_sigma: float = 1.1,
         dp_clip_norm: float = 1.0,
         include_payload: bool = True,
         lr: float = 2e-3,
+        batch_size: int = 32,
+        seed: int = 0,
         device: str = "cpu",
     ):
         self.hidden_dims = hidden_dims
@@ -31,129 +32,75 @@ class FAGIDetector:
         self.pgd_steps = pgd_steps
         self.gnnguard_threshold = gnnguard_threshold
         self.use_adversarial_training = use_adversarial_training
-        self.dp_epsilon = dp_epsilon
+        self.use_dp = use_dp
         self.dp_delta = dp_delta
         self.dp_sigma = dp_sigma
         self.dp_clip_norm = dp_clip_norm
         self.include_payload = include_payload
         self.lr = lr
+        self.batch_size = batch_size
+        self.seed = seed
         self.device = device
-
-        self.graph_constructor = APIGraphConstructor(
-            include_payload=include_payload
-        )
-        feature_dim = 6 if include_payload else 5
-        self.model = FAGIModel(
-            in_dim=feature_dim,
-            hidden_dims=hidden_dims,
-            gnnguard_threshold=gnnguard_threshold,
-        ).to(device)
-        self.dp_mechanism = MVGMechanism(
-            clip_norm=dp_clip_norm,
-            sigma=dp_sigma,
-            device=device,
-        )
+        self.feature_dim = 6 if include_payload else 5
+        self.model = DenseFAGI(self.feature_dim, hidden_dims=hidden_dims,
+                               gnnguard_threshold=gnnguard_threshold, readout="mean")
+        self.scaler: Optional[NodeFeatureScaler] = None
+        self.train_info: dict = {}
         self._is_fitted = False
 
-    def fit(
-        self,
-        sessions: List[dict],
-        epochs: int = 50,
-        batch_size: int = 250,
-        verbose: bool = True,
-    ) -> "FAGIDetector":
-        graphs = self.graph_constructor.sessions_to_graphs(sessions)
-        optimizer = torch.optim.Adam(
-            self.model.parameters(),
-            lr=self.lr,
-            weight_decay=1e-4,
-        )
+    @property
+    def epsilon(self) -> Optional[float]:
+        return self.train_info.get("epsilon")
 
-        self.model.train()
-        for epoch in range(epochs):
-            idx = np.random.permutation(len(graphs))[:min(batch_size, len(graphs))]
-            epoch_loss = 0.0
+    def _dense(self, sessions: List[dict]):
+        X, A, M, y = sessions_to_dense(sessions, include_payload=self.include_payload)
+        return X, A, M, y
 
-            for i in idx:
-                g = graphs[i].to(self.device)
-                optimizer.zero_grad()
-
-                if self.use_adversarial_training and epoch % 2 == 0:
-                    loss = adversarial_loss(
-                        self.model, g.x, g.edge_index, g.y,
-                        epsilon=self.pgd_epsilon,
-                        pgd_steps=self.pgd_steps,
-                    )
-                else:
-                    out = self.model(g.x, g.edge_index)
-                    loss = F.cross_entropy(out, g.y)
-
-                loss.backward()
-                self.dp_mechanism.clip_and_noise(self.model)
-                optimizer.step()
-                epoch_loss += loss.item()
-
-            if verbose and (epoch + 1) % 10 == 0:
-                avg = epoch_loss / max(len(idx), 1)
-                print(f"Epoch {epoch+1}/{epochs} | Loss: {avg:.4f}")
-
+    def fit(self, sessions: List[dict], epochs: int = 30, verbose: bool = True) -> "FAGIDetector":
+        if not sessions:
+            raise ValueError("fit() needs at least one session")
+        X, A, M, y = self._dense(sessions)
+        self.scaler = NodeFeatureScaler().fit(X, M)
+        self.train_info = train_model(
+            self.model, self.scaler.transform(X), A, y, node_mask=M, epochs=epochs,
+            batch_size=self.batch_size, lr=self.lr, adv=self.use_adversarial_training, dp=self.use_dp,
+            sigma=self.dp_sigma, clip=self.dp_clip_norm, delta=self.dp_delta, seed=self.seed,
+            pgd_eps=self.pgd_epsilon, pgd_steps=self.pgd_steps)
+        if verbose and self.use_dp:
+            print(f"DP-SGD: sigma={self.dp_sigma}, q={self.train_info['sample_rate']:.4f}, "
+                  f"steps={self.train_info['steps']}, epsilon={self.epsilon:.2f} (delta={self.dp_delta})")
         self._is_fitted = True
         return self
 
-    def predict(
-        self,
-        sessions: List[dict],
-        adversarial: bool = False,
-    ) -> np.ndarray:
+    def predict(self, sessions: List[dict], adversarial: bool = False) -> np.ndarray:
         self._check_fitted()
-        graphs = self.graph_constructor.sessions_to_graphs(sessions)
-        self.model.eval()
-        predictions = []
-
-        for g in graphs:
-            g = g.to(self.device)
-            if adversarial:
-                from fagi.model.pgd import pgd_attack
-                x_adv = pgd_attack(
-                    self.model, g.x, g.edge_index, g.y,
-                    epsilon=self.pgd_epsilon,
-                    steps=self.pgd_steps,
-                )
-                with torch.no_grad():
-                    pred = self.model(x_adv, g.edge_index).argmax(1).item()
-            else:
-                with torch.no_grad():
-                    pred = self.model(g.x, g.edge_index).argmax(1).item()
-            predictions.append(pred)
-
-        return np.array(predictions)
+        X, A, M, y = self._dense(sessions)
+        Xs = self.scaler.transform(X)
+        if adversarial:
+            Xs = adversarial_inputs(self.model, Xs, A, y, node_mask=M, eps=self.pgd_epsilon, steps=20,
+                                    seed=self.seed)
+        return predict(self.model, Xs, A)
 
     def predict_proba(self, sessions: List[dict]) -> np.ndarray:
         self._check_fitted()
-        graphs = self.graph_constructor.sessions_to_graphs(sessions)
-        self.model.eval()
-        probs = []
-
+        X, A, _, _ = self._dense(sessions)
         with torch.no_grad():
-            for g in graphs:
-                g = g.to(self.device)
-                logits = self.model(g.x, g.edge_index)
-                p = F.softmax(logits, dim=1).cpu().numpy()[0]
-                probs.append(p)
-
-        return np.array(probs)
+            self.model.eval()
+            return F.softmax(self.model(T(self.scaler.transform(X)), T(A)), dim=1).numpy()
 
     def _check_fitted(self) -> None:
         if not self._is_fitted:
             raise RuntimeError("Call fit() or load() before predicting.")
 
     def save(self, path: str) -> None:
-        torch.save(self.model.state_dict(), path)
-        print(f"Model saved to {path}")
+        torch.save({"state": self.model.state_dict(), "scale": self.scaler.scale_ if self.scaler else None,
+                    "train_info": self.train_info}, path)
 
     def load(self, path: str) -> "FAGIDetector":
-        self.model.load_state_dict(
-            torch.load(path, map_location=self.device)
-        )
+        blob = torch.load(path, map_location=self.device, weights_only=False)
+        self.model.load_state_dict(blob["state"])
+        self.scaler = NodeFeatureScaler()
+        self.scaler.scale_ = blob["scale"]
+        self.train_info = blob.get("train_info", {})
         self._is_fitted = True
         return self
