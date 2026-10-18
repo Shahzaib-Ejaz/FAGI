@@ -22,7 +22,7 @@ SYN_CONFIG = {
     "dp_clip": 1.0,
     "dp_delta": 1e-6,
     "init": "reset_after_seed",
-    "scaling": "log1p",
+    "scaling": "divide by per-feature std of a public calibration sample (generator seed 7, original)",
     "seeds": [0],
 }
 
@@ -37,8 +37,25 @@ SYN_VARIANTS = {
 }
 
 
-def log_features(X):
-    return np.log1p(np.maximum(X, 0.0)).astype(np.float32)
+CALIBRATION_SEED = 7
+_SCALE = {}
+
+
+def calibration_scale():
+    if "s" not in _SCALE:
+        import importlib.util
+        gp = os.path.join(ROOT, "data", "synthetic", "generator.py")
+        spec = importlib.util.spec_from_file_location("fagi_generator", gp)
+        gen = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gen)
+        cal = gen.generate_dataset(seed=CALIBRATION_SEED, difficulty="original")
+        X, _, M, _ = sessions_to_dense(cal, include_payload=True)
+        _SCALE["s"] = (X[M > 0].std(axis=0) + 1e-6).astype(np.float32)
+    return _SCALE["s"]
+
+
+def scale_features(X):
+    return (X / calibration_scale()[: X.shape[-1]]).astype(np.float32)
 
 
 def load_sessions(path=None):
@@ -65,7 +82,7 @@ class SyntheticData:
         return [(idx[a], idx[b]) for a, b in skf.split(np.zeros(len(idx)), strat)]
 
     def scaled(self, payload, tr, te):
-        return log_features(self.X[payload][tr]), log_features(self.X[payload][te])
+        return scale_features(self.X[payload][tr]), scale_features(self.X[payload][te])
 
     def train_variant(self, name, tr, te, seed_offset=0, epochs=None):
         v = SYN_VARIANTS[name]

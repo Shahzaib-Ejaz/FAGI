@@ -15,7 +15,7 @@ from common import DenseFAGI, env_info, metrics, per_sample_loss, predict, save_
 from fagi.federated.server import FederatedServer
 from fagi.privacy.dp_sgd import compute_epsilon, steps_for
 from mia import mia_report
-from synthetic_common import SYN_CONFIG, SyntheticData, load_sessions, log_features
+from synthetic_common import SYN_CONFIG, SyntheticData, load_sessions, scale_features
 
 TRAIN_ORGS = [0, 1, 2, 3]
 TEST_ORG = 4
@@ -56,7 +56,7 @@ def run_repeat(D, r):
         idx = np.flatnonzero(D.org == o)
         a, b = train_test_split(idx, train_size=MEMBER_FRACTION, random_state=seed, stratify=D.attack_type[idx])
         members[o], nonmembers[o] = np.sort(a), np.sort(b)
-    X = log_features(D.X[True])
+    X = scale_features(D.X[True])
     test = np.flatnonzero(D.org == TEST_ORG)
     mem_all = np.concatenate([members[o] for o in TRAIN_ORGS])
     non_all = np.concatenate([nonmembers[o] for o in TRAIN_ORGS])
@@ -176,7 +176,7 @@ def main():
     save_json({"config": SYN_CONFIG, "env": env_info(), "train_orgs": TRAIN_ORGS, "test_org": TEST_ORG,
                "rounds": ROUNDS, "local_epochs": LOCAL_EPOCHS, "repeats": args.repeats,
                "member_fraction": MEMBER_FRACTION, "aggregation": "FedAvg weighted by client size (no filter)",
-               "normalization": "log1p (data-independent)", "summary": summary, "runs": runs}, args.output)
+               "normalization": "fixed per-feature scales from a public calibration sample (generator seed 7)", "summary": summary, "runs": runs}, args.output)
 
 
 if __name__ == "__main__":
