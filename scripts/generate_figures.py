@@ -45,7 +45,7 @@ def save(fig, out, name, dpi):
 
 def fig_benchmark(r, out, dpi):
     rows = r["exp1"]["models"]
-    short = {"rf": "RF", "knn": "k-NN", "mlp": "MLP", "mlp_at": "MLP-AT", "cnn": "CNN", "gnn": "GNN", "fagi": "FAGI"}
+    short = {"rf": "RF", "knn": "k-NN", "mlp": "MLP", "mlp_at": "MLP\nPGD", "mlp_dp": "MLP\nDP", "cnn": "CNN", "gnn": "GNN", "fagi": "FAGI"}
     names = [short[x["key"]] for x in rows]
     clean = [pct(x["clean"]["mean"]) for x in rows]
     w01 = [pct(x["worst_recall_eps0.1"]["mean"]) for x in rows]
@@ -60,7 +60,7 @@ def fig_benchmark(r, out, dpi):
             ax.text(b.get_x() + b.get_width() / 2, v + 1.2, f"{v:.1f}", ha="center", va="bottom", fontsize=5.2,
                     rotation=90, color=INK)
     ax.set_xticks(x)
-    ax.set_xticklabels(names, fontsize=6.8)
+    ax.set_xticklabels(names, fontsize=6.2)
     ax.set_ylabel("%")
     ax.set_ylim(0, 120)
     ax.set_yticks([0, 20, 40, 60, 80, 100])
@@ -108,7 +108,7 @@ def fig_privacy(r, out, dpi):
         ax.axhline(pct(nodp[field]["mean"]), color=c, linewidth=0.7, alpha=0.7, linestyle=(0, (1, 2)))
     for x in dp:
         ax.annotate(f"σ={x['sigma']}", (x["epsilon"]["mean"], pct(x["worst_recall_eps0.5"]["mean"])),
-                    textcoords="offset points", xytext=(0, -14), ha="center", fontsize=5.6, color="#555555")
+                    textcoords="offset points", xytext=(0, 7), ha="center", fontsize=5.6, color="#555555")
     ax.set_xscale("log")
     ax.xaxis.set_minor_locator(NullLocator())
     ax.xaxis.set_minor_formatter(NullFormatter())
@@ -116,7 +116,7 @@ def fig_privacy(r, out, dpi):
     ax.set_xticks(ticks)
     ax.set_xticklabels([str(t) for t in ticks])
     ax.set_xlim(0.38, 20)
-    ax.set_ylim(40, 103)
+    ax.set_ylim(25, 103)
     ax.set_xlabel("Privacy budget $\\epsilon_{DP}$ (δ = 10$^{-6}$)")
     ax.set_ylabel("%")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.2), ncol=2)

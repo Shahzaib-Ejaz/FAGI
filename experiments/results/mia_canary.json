@@ -10,6 +10,7 @@
       2
     ],
     "pool_fraction": 0.5,
+    "temporal_train_fraction": 0.7,
     "k": 8,
     "k_inner": 3,
     "epochs": 20,
@@ -20,10 +21,16 @@
     "pgd_eps": 0.1,
     "pgd_train_steps": 10,
     "pgd_eval_steps": 20,
+    "pgd_restarts": 2,
+    "mimicry_targets": 32,
     "eps_sweep": [
       0.02,
       0.05,
       0.1,
+      0.2,
+      0.5
+    ],
+    "k100_eps": [
       0.2,
       0.5
     ],
@@ -39,7 +46,7 @@
     "overfit_epochs": 300,
     "attack_n": 2000
   },
-  "config_hash": "e89e91759a",
+  "config_hash": "85436bd007",
   "env": {
     "python": "3.13.16",
     "torch": "2.14.1+cu130",
@@ -51,6 +58,11 @@
   "summary": {
     "gnn": {
       "auc_pooled": 0.6581999999999999,
+      "auc_pooled_ci95": [
+        0.6229639,
+        0.6923373999999999
+      ],
+      "empirical_eps_lower_bound": 1.0326724992660914,
       "auc_per_fold": {
         "mean": 0.6597000000000001,
         "std": 0.03541993788814429,
@@ -93,6 +105,11 @@
     },
     "fagi_no_dp": {
       "auc_pooled": 0.630616,
+      "auc_pooled_ci95": [
+        0.5960435999999999,
+        0.6687206999999998
+      ],
+      "empirical_eps_lower_bound": 1.4488523728485927,
       "auc_per_fold": {
         "mean": 0.62844,
         "std": 0.05311103840069407,
@@ -135,6 +152,11 @@
     },
     "fagi": {
       "auc_pooled": 0.49651199999999995,
+      "auc_pooled_ci95": [
+        0.46266979999999996,
+        0.5324761
+      ],
+      "empirical_eps_lower_bound": 0.0,
       "auc_per_fold": {
         "mean": 0.50064,
         "std": 0.05264456667121498,
