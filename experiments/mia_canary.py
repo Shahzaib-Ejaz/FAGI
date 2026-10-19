@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import sys
 
@@ -51,6 +52,10 @@ def bootstrap_auc(loss_in, loss_out, n_boot=1000, seed=0):
 
 
 def run_fold(folds, f):
+    cache = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "cache", f"canary_f{f}_{folds.hash}.json")
+    if os.path.exists(cache):
+        with open(cache) as fh:
+            return json.load(fh)
     d = folds.fold(f)
     rng = np.random.RandomState(4000 + f)
     can = rng.choice(len(d["yp"]), N_CANARY, replace=False)
@@ -79,6 +84,8 @@ def run_fold(folds, f):
                      "epsilon": info.get("epsilon")}
         print(f"  fold {f} {name:<11} canary AUC={auc:.3f}  fit in={fit_in:.2f} out={fit_out:.2f}  eps={info.get('epsilon')}",
               flush=True)
+    with open(cache, "w") as fh:
+        json.dump(out, fh)
     return out
 
 
