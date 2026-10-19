@@ -1,4 +1,6 @@
 import argparse
+import hashlib
+import json
 import copy
 import os
 import sys
@@ -17,6 +19,9 @@ from fagi.privacy.dp_sgd import compute_epsilon, steps_for
 from mia import mia_report
 from synthetic_common import SYN_CONFIG, SyntheticData, load_sessions, scale_features
 
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CODE_FILES = ["fagi/model/dense.py", "fagi/training.py", "fagi/privacy/dp_sgd.py", "fagi/federated/server.py",
+              "experiments/synthetic_common.py", "experiments/mia.py"]
 TRAIN_ORGS = [0, 1, 2, 3]
 TEST_ORG = 4
 ROUNDS = 30
@@ -158,8 +163,18 @@ def main():
     print("EXPERIMENT 4: federated generalization to an unseen organization + membership inference")
     D = SyntheticData(load_sessions(args.api_data))
     runs = []
+    tag = os.path.splitext(os.path.basename(args.api_data or "sessions_final.json"))[0]
+    src = hashlib.sha256(b"".join(open(os.path.join(ROOT, f), "rb").read() for f in CODE_FILES)).hexdigest()[:10]
     for r in range(args.repeats):
-        res = run_repeat(D, r)
+        cache = os.path.join(ROOT, "experiments", "results", "cache", f"exp4_{tag}_r{r}_{src}.json")
+        if os.path.exists(cache):
+            with open(cache) as fh:
+                res = json.load(fh)
+        else:
+            res = run_repeat(D, r)
+            os.makedirs(os.path.dirname(cache), exist_ok=True)
+            with open(cache, "w") as fh:
+                json.dump(res, fh, default=lambda o: o.tolist() if hasattr(o, "tolist") else float(o))
         runs.append(res)
         print(f"  repeat {r + 1}: " + "  ".join(f"{k}={v['test']['accuracy']:.3f}" for k, v in res.items()), flush=True)
     summary = {}
