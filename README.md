@@ -91,6 +91,8 @@ data/
   synthetic/generator.py
 experiments/            experiment scripts, shared harness, results/
 scripts/                run_all.sh, build_results.py, generate_figures.py, build_dashboard.py
+paper/                  builds the paper (DOCX) from paper_results.json and checks every directional
+                        claim in it against the results (see paper/README.md)
 tests/
 ```
 

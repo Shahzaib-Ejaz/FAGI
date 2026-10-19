@@ -1,6 +1,6 @@
 from fagi.graph.constructor import APIGraphConstructor
 from fagi.model.gnn import FAGIModel
-from fagi.privacy.mvg_dp import MVGMechanism
+from fagi.privacy import DPSGD, compute_epsilon
 from fagi.federated.server import FederatedServer
 from fagi.detector import FAGIDetector
 
@@ -9,6 +9,7 @@ __all__ = [
     "FAGIDetector",
     "APIGraphConstructor",
     "FAGIModel",
-    "MVGMechanism",
+    "DPSGD",
+    "compute_epsilon",
     "FederatedServer",
 ]

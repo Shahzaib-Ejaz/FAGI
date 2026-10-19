@@ -1,0 +1,7 @@
+{
+  "name": "fagi-paper",
+  "private": true,
+  "description": "Builds the FAGI paper (DOCX) from experiments/results/paper_results.json and checks every directional claim against it",
+  "scripts": { "build": "node build_paper.js" },
+  "dependencies": { "docx": "9.7.1" }
+}
