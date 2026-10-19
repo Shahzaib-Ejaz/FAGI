@@ -337,23 +337,23 @@
         ]
       },
       "mia_auc": {
-        "mean": 0.4968930555555556,
-        "std": 0.012469206257058616,
+        "mean": 0.4954083333333334,
+        "std": 0.013141005868525648,
         "n": 3,
         "values": [
-          0.4964777777777778,
-          0.48183333333333334,
-          0.5123680555555555
+          0.49469861111111113,
+          0.47968055555555555,
+          0.5118458333333333
         ]
       },
       "mia_attack_accuracy": {
-        "mean": 0.5033333333333333,
-        "std": 0.008498365855987981,
+        "mean": 0.4988888888888889,
+        "std": 0.009558139185602912,
         "n": 3,
         "values": [
           0.5,
-          0.495,
-          0.515
+          0.4866666666666667,
+          0.51
         ]
       },
       "mia_tpr_at_1pct_fpr": {
@@ -377,13 +377,13 @@
         ]
       },
       "client_model_mia_auc_mean": {
-        "mean": 0.4966296296296296,
-        "std": 0.017595407961860616,
+        "mean": 0.49512592592592597,
+        "std": 0.019233569939562097,
         "n": 3,
         "values": [
-          0.5044777777777778,
-          0.47225555555555554,
-          0.5131555555555556
+          0.49978333333333336,
+          0.4695888888888889,
+          0.5160055555555555
         ]
       },
       "client_model_mia_tpr1_mean": {
@@ -405,6 +405,105 @@
       }
     },
     "fedavg_dp": {
+      "accuracy": {
+        "mean": 0.7286666666666667,
+        "std": 0.020531818125912676,
+        "n": 3,
+        "values": [
+          0.7,
+          0.747,
+          0.739
+        ]
+      },
+      "fpr": {
+        "mean": 0.0,
+        "std": 0.0,
+        "n": 3,
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "epsilon": {
+        "mean": 8.847900495671952,
+        "std": 0.0,
+        "n": 3,
+        "values": [
+          8.847900495671952,
+          8.847900495671952,
+          8.847900495671952
+        ]
+      },
+      "mia_auc": {
+        "mean": 0.4994166666666667,
+        "std": 0.015556297890686792,
+        "n": 3,
+        "values": [
+          0.4947527777777778,
+          0.4831291666666666,
+          0.5203680555555555
+        ]
+      },
+      "mia_attack_accuracy": {
+        "mean": 0.5011111111111112,
+        "std": 0.012196943555611189,
+        "n": 3,
+        "values": [
+          0.49166666666666664,
+          0.49333333333333335,
+          0.5183333333333333
+        ]
+      },
+      "mia_tpr_at_1pct_fpr": {
+        "mean": 0.015555555555555553,
+        "std": 0.0007856742013183863,
+        "n": 3,
+        "values": [
+          0.015,
+          0.015,
+          0.016666666666666666
+        ]
+      },
+      "mia_tpr_at_0.1pct_fpr": {
+        "mean": 0.0011111111111111111,
+        "std": 0.0007856742013183862,
+        "n": 3,
+        "values": [
+          0.0016666666666666668,
+          0.0,
+          0.0016666666666666668
+        ]
+      },
+      "client_model_mia_auc_mean": {
+        "mean": 0.5059592592592592,
+        "std": 0.010954189432266117,
+        "n": 3,
+        "values": [
+          0.5099111111111111,
+          0.49101111111111106,
+          0.5169555555555556
+        ]
+      },
+      "client_model_mia_tpr1_mean": {
+        "mean": 0.015,
+        "std": 0.0027216552697590865,
+        "n": 3,
+        "values": [
+          0.011666666666666667,
+          0.015000000000000001,
+          0.018333333333333333
+        ]
+      },
+      "per_type_detection": {
+        "lateral_movement": 0.005333333333333333,
+        "none": 1.0,
+        "schema_recon": 0.10933333333333334,
+        "slow_exfiltration": 1.0,
+        "sql_injection": 0.7146666666666667
+      }
+    },
+    "fedavg_dp_reset_optimizer": {
       "accuracy": {
         "mean": 0.7183333333333333,
         "std": 0.019154343864744874,
@@ -527,13 +626,13 @@
         ]
       },
       "epsilon": {
-        "mean": 8.847900495671952,
+        "mean": 8.792260400167406,
         "std": 0.0,
         "n": 3,
         "values": [
-          8.847900495671952,
-          8.847900495671952,
-          8.847900495671952
+          8.792260400167406,
+          8.792260400167406,
+          8.792260400167406
         ]
       }
     },
@@ -735,24 +834,60 @@
           "sql_injection": 1.0
         },
         "mia": {
-          "auc": 0.4964777777777778,
+          "auc": 0.49469861111111113,
           "attack_accuracy": 0.5,
           "tpr_at_1pct_fpr": 0.0,
           "tpr_at_0.1pct_fpr": 0.0,
           "n_pairs": 600,
           "per_class_auc": {
-            "lateral_movement": 0.548,
-            "none": 0.484515625,
-            "schema_recon": 0.4686,
+            "lateral_movement": 0.5494,
+            "none": 0.48169687499999997,
+            "schema_recon": 0.49379999999999996,
             "slow_exfiltration": 0.5,
-            "sql_injection": 0.5618
+            "sql_injection": 0.5461999999999999
           },
-          "max_per_class_auc": 0.5618
+          "max_per_class_auc": 0.5494
         },
-        "client_model_mia_auc_mean": 0.5044777777777778,
-        "client_model_mia_tpr1_mean": 0.0
+        "client_model_mia_auc_mean": 0.49978333333333336,
+        "client_model_mia_tpr1_mean": 0.0,
+        "optimizer_state_persistent": true
       },
       "fedavg_dp": {
+        "test": {
+          "accuracy": 0.7,
+          "fpr": 0.0,
+          "detection_rate": 0.39999999999992003,
+          "precision": 0.9999999999995001,
+          "f1": 0.5714285713875918
+        },
+        "epsilon": 8.847900495671952,
+        "per_type_detection": {
+          "lateral_movement": 0.0,
+          "none": 1.0,
+          "schema_recon": 0.0,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 0.6
+        },
+        "mia": {
+          "auc": 0.4947527777777778,
+          "attack_accuracy": 0.49166666666666664,
+          "tpr_at_1pct_fpr": 0.015,
+          "tpr_at_0.1pct_fpr": 0.0016666666666666668,
+          "n_pairs": 600,
+          "per_class_auc": {
+            "lateral_movement": 0.45600000000000007,
+            "none": 0.48681875,
+            "schema_recon": 0.5311999999999999,
+            "slow_exfiltration": 0.4976,
+            "sql_injection": 0.5452
+          },
+          "max_per_class_auc": 0.5452
+        },
+        "client_model_mia_auc_mean": 0.5099111111111111,
+        "client_model_mia_tpr1_mean": 0.011666666666666667,
+        "optimizer_state_persistent": true
+      },
+      "fedavg_dp_reset_optimizer": {
         "test": {
           "accuracy": 0.692,
           "fpr": 0.0,
@@ -784,7 +919,8 @@
           "max_per_class_auc": 0.5464
         },
         "client_model_mia_auc_mean": 0.5090111111111112,
-        "client_model_mia_tpr1_mean": 0.011666666666666667
+        "client_model_mia_tpr1_mean": 0.011666666666666667,
+        "optimizer_state_persistent": false
       },
       "local_only_mean": {
         "test": {
@@ -808,7 +944,7 @@
           0.742,
           0.743
         ],
-        "epsilon": 8.847900495671952
+        "epsilon": 8.792260400167406
       },
       "overfit_control": {
         "test": {
@@ -962,24 +1098,60 @@
           "sql_injection": 1.0
         },
         "mia": {
-          "auc": 0.48183333333333334,
-          "attack_accuracy": 0.495,
+          "auc": 0.47968055555555555,
+          "attack_accuracy": 0.4866666666666667,
           "tpr_at_1pct_fpr": 0.0,
           "tpr_at_0.1pct_fpr": 0.0,
           "n_pairs": 600,
           "per_class_auc": {
-            "lateral_movement": 0.5194,
-            "none": 0.475628125,
-            "schema_recon": 0.5,
+            "lateral_movement": 0.5196000000000001,
+            "none": 0.47825937500000004,
+            "schema_recon": 0.5042,
             "slow_exfiltration": 0.5,
-            "sql_injection": 0.4848
+            "sql_injection": 0.47
           },
-          "max_per_class_auc": 0.5194
+          "max_per_class_auc": 0.5196000000000001
         },
-        "client_model_mia_auc_mean": 0.47225555555555554,
-        "client_model_mia_tpr1_mean": 0.0
+        "client_model_mia_auc_mean": 0.4695888888888889,
+        "client_model_mia_tpr1_mean": 0.0,
+        "optimizer_state_persistent": true
       },
       "fedavg_dp": {
+        "test": {
+          "accuracy": 0.747,
+          "fpr": 0.0,
+          "detection_rate": 0.4939999999999012,
+          "precision": 0.9999999999995952,
+          "f1": 0.661311914279521
+        },
+        "epsilon": 8.847900495671952,
+        "per_type_detection": {
+          "lateral_movement": 0.008,
+          "none": 1.0,
+          "schema_recon": 0.064,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 0.904
+        },
+        "mia": {
+          "auc": 0.4831291666666666,
+          "attack_accuracy": 0.49333333333333335,
+          "tpr_at_1pct_fpr": 0.015,
+          "tpr_at_0.1pct_fpr": 0.0,
+          "n_pairs": 600,
+          "per_class_auc": {
+            "lateral_movement": 0.488,
+            "none": 0.48543125000000004,
+            "schema_recon": 0.5763999999999999,
+            "slow_exfiltration": 0.5424,
+            "sql_injection": 0.45199999999999996
+          },
+          "max_per_class_auc": 0.5763999999999999
+        },
+        "client_model_mia_auc_mean": 0.49101111111111106,
+        "client_model_mia_tpr1_mean": 0.015000000000000001,
+        "optimizer_state_persistent": true
+      },
+      "fedavg_dp_reset_optimizer": {
         "test": {
           "accuracy": 0.737,
           "fpr": 0.0,
@@ -1011,7 +1183,8 @@
           "max_per_class_auc": 0.5848
         },
         "client_model_mia_auc_mean": 0.49245555555555554,
-        "client_model_mia_tpr1_mean": 0.016666666666666666
+        "client_model_mia_tpr1_mean": 0.016666666666666666,
+        "optimizer_state_persistent": false
       },
       "local_only_mean": {
         "test": {
@@ -1035,7 +1208,7 @@
           0.654,
           0.742
         ],
-        "epsilon": 8.847900495671952
+        "epsilon": 8.792260400167406
       },
       "overfit_control": {
         "test": {
@@ -1189,24 +1362,60 @@
           "sql_injection": 1.0
         },
         "mia": {
-          "auc": 0.5123680555555555,
-          "attack_accuracy": 0.515,
+          "auc": 0.5118458333333333,
+          "attack_accuracy": 0.51,
           "tpr_at_1pct_fpr": 0.0,
           "tpr_at_0.1pct_fpr": 0.0,
           "n_pairs": 600,
           "per_class_auc": {
-            "lateral_movement": 0.5267999999999999,
-            "none": 0.510690625,
-            "schema_recon": 0.5,
+            "lateral_movement": 0.5394,
+            "none": 0.51525625,
+            "schema_recon": 0.5445999999999999,
             "slow_exfiltration": 0.5,
-            "sql_injection": 0.48660000000000003
+            "sql_injection": 0.5174000000000001
           },
-          "max_per_class_auc": 0.5267999999999999
+          "max_per_class_auc": 0.5445999999999999
         },
-        "client_model_mia_auc_mean": 0.5131555555555556,
-        "client_model_mia_tpr1_mean": 0.0
+        "client_model_mia_auc_mean": 0.5160055555555555,
+        "client_model_mia_tpr1_mean": 0.0,
+        "optimizer_state_persistent": true
       },
       "fedavg_dp": {
+        "test": {
+          "accuracy": 0.739,
+          "fpr": 0.0,
+          "detection_rate": 0.4779999999999044,
+          "precision": 0.9999999999995817,
+          "f1": 0.6468200270196612
+        },
+        "epsilon": 8.847900495671952,
+        "per_type_detection": {
+          "lateral_movement": 0.008,
+          "none": 1.0,
+          "schema_recon": 0.264,
+          "slow_exfiltration": 1.0,
+          "sql_injection": 0.64
+        },
+        "mia": {
+          "auc": 0.5203680555555555,
+          "attack_accuracy": 0.5183333333333333,
+          "tpr_at_1pct_fpr": 0.016666666666666666,
+          "tpr_at_0.1pct_fpr": 0.0016666666666666668,
+          "n_pairs": 600,
+          "per_class_auc": {
+            "lateral_movement": 0.5128,
+            "none": 0.516746875,
+            "schema_recon": 0.518,
+            "slow_exfiltration": 0.46560000000000007,
+            "sql_injection": 0.512
+          },
+          "max_per_class_auc": 0.518
+        },
+        "client_model_mia_auc_mean": 0.5169555555555556,
+        "client_model_mia_tpr1_mean": 0.018333333333333333,
+        "optimizer_state_persistent": true
+      },
+      "fedavg_dp_reset_optimizer": {
         "test": {
           "accuracy": 0.726,
           "fpr": 0.0,
@@ -1238,7 +1447,8 @@
           "max_per_class_auc": 0.516540625
         },
         "client_model_mia_auc_mean": 0.5166777777777778,
-        "client_model_mia_tpr1_mean": 0.018333333333333333
+        "client_model_mia_tpr1_mean": 0.018333333333333333,
+        "optimizer_state_persistent": false
       },
       "local_only_mean": {
         "test": {
@@ -1262,7 +1472,7 @@
           0.729,
           0.746
         ],
-        "epsilon": 8.847900495671952
+        "epsilon": 8.792260400167406
       },
       "overfit_control": {
         "test": {
