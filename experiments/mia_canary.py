@@ -23,21 +23,40 @@ def clopper_pearson(k, n, alpha=0.05):
     return lo, hi
 
 
-def empirical_eps_lower_bound(loss_in, loss_out, delta):
-    s_in, s_out = -np.asarray(loss_in), -np.asarray(loss_out)
-    n_in, n_out = len(s_in), len(s_out)
-    best = 0.0
-    for t in np.unique(np.concatenate([s_in, s_out])):
-        tp, fp = int((s_in >= t).sum()), int((s_out >= t).sum())
+def _eps_at(tp, n_in, fp, n_out, delta, direction):
+    if direction == "low_loss_is_member":
         tpr_lo, _ = clopper_pearson(tp, n_in)
         _, fpr_hi = clopper_pearson(fp, n_out)
-        if fpr_hi > 0 and tpr_lo - delta > 0:
-            best = max(best, float(np.log((tpr_lo - delta) / fpr_hi)))
-        tnr_lo, _ = clopper_pearson(n_out - fp, n_out)
-        _, fnr_hi = clopper_pearson(n_in - tp, n_in)
-        if fnr_hi > 0 and tnr_lo - delta > 0:
-            best = max(best, float(np.log((tnr_lo - delta) / fnr_hi)))
-    return best
+        return float(np.log((tpr_lo - delta) / fpr_hi)) if fpr_hi > 0 and tpr_lo - delta > 0 else 0.0
+    tnr_lo, _ = clopper_pearson(n_out - fp, n_out)
+    _, fnr_hi = clopper_pearson(n_in - tp, n_in)
+    return float(np.log((tnr_lo - delta) / fnr_hi)) if fnr_hi > 0 and tnr_lo - delta > 0 else 0.0
+
+
+def empirical_eps_lower_bound(loss_in, loss_out, delta, seed=0):
+    """Split-sample bound: pick threshold and direction on one half of the canaries, bound on the other.
+
+    Selecting the threshold on the same canaries used for the Clopper-Pearson bound voids its confidence level,
+    so the selection half is never used for the bound. The bound still treats canaries in one run as independent
+    trials, which is the usual simplification; Steinke et al. (2023) give a bound that accounts for it.
+    """
+    rng = np.random.RandomState(seed)
+    s_in, s_out = -np.asarray(loss_in), -np.asarray(loss_out)
+    pi, po = rng.permutation(len(s_in)), rng.permutation(len(s_out))
+    sel_in, ev_in = s_in[pi[: len(pi) // 2]], s_in[pi[len(pi) // 2:]]
+    sel_out, ev_out = s_out[po[: len(po) // 2]], s_out[po[len(po) // 2:]]
+    best, choice = -1.0, (None, "low_loss_is_member")
+    for t in np.unique(np.concatenate([sel_in, sel_out])):
+        tp, fp = int((sel_in >= t).sum()), int((sel_out >= t).sum())
+        for direction in ("low_loss_is_member", "high_loss_is_member"):
+            v = _eps_at(tp, len(sel_in), fp, len(sel_out), delta, direction)
+            if v > best:
+                best, choice = v, (t, direction)
+    t, direction = choice
+    if t is None:
+        return 0.0
+    tp, fp = int((ev_in >= t).sum()), int((ev_out >= t).sum())
+    return max(0.0, _eps_at(tp, len(ev_in), fp, len(ev_out), delta, direction))
 
 
 def bootstrap_auc(loss_in, loss_out, n_boot=1000, seed=0):

@@ -44,9 +44,10 @@ module.exports = {
   tramer: 'F. Tram\u00e8r, N. Carlini, W. Brendel, and A. Madry, "On adaptive attacks to adversarial example defenses," in Proc. NeurIPS, 2020.',
   autoattack: 'F. Croce and M. Hein, "Reliable evaluation of adversarial robustness with an ensemble of diverse parameter-free attacks," in Proc. ICML, 2020, pp. 2206–2216.',
   daigavane: 'A. Daigavane, G. Madan, A. Sinha, A. G. Thakurta, G. Aggarwal, and P. Jain, "Node-level differentially private graph neural networks," arXiv:2111.15521, 2021.',
-  gap: 'S. Sajadmanesh, A. S. Shamsabadi, A. Bellet, and D. Gatica-Perez, "GAP: Differentially private graph neural networks with aggregation perturbation," in Proc. USENIX Security, 2023.',
-  arp: 'D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro, and K. Rieck, "Dos and don\'ts of machine learning in computer security," in Proc. USENIX Security, 2022.',
+  gap: 'S. Sajadmanesh, A. S. Shamsabadi, A. Bellet, and D. Gatica-Perez, "GAP: Differentially private graph neural networks with aggregation perturbation," in Proc. USENIX Security, 2023, pp. 3223–3240.',
+  arp: 'D. Arp, E. Quiring, F. Pendlebury, A. Warnecke, F. Pierazzi, C. Wressnegger, L. Cavallaro, and K. Rieck, "Dos and don\'ts of machine learning in computer security," in Proc. USENIX Security, 2022, pp. 3971–3988.',
   balle: 'B. Balle, G. Barthe, M. Gaboardi, J. Hsu, and T. Sato, "Hypothesis testing interpretations and R\u00e9nyi differential privacy," in Proc. AISTATS, 2020, pp. 2496–2506.',
   papernot_tuning: 'N. Papernot and T. Steinke, "Hyperparameter tuning with R\u00e9nyi differential privacy," in Proc. ICLR, 2022.',
   jagielski: 'M. Jagielski, J. Ullman, and A. Oprea, "Auditing differentially private machine learning: How private is private SGD?" in Proc. NeurIPS, 2020.',
+  steinke: 'T. Steinke, M. Nasr, and M. Jagielski, "Privacy auditing with one (1) training run," in Proc. NeurIPS, 2023.',
 };
