@@ -110,6 +110,10 @@ def fixed_fpr(folds, models=MODELS, seeds=(0,)):
             else:
                 r = paired(out["fagi"][f"fixed_{e}"], out[o][f"fixed_{e}"]); r["unit"] = "fold-seed pair" if ns > 1 else "fold"
             tests[f"fagi_vs_{o}_fixed_{e}"] = r
+    if "fagi_no_dp" in out and "gnn" in out:
+        for e in EPS:
+            r = paired(out["fagi_no_dp"][f"fixed_{e}"], out["gnn"][f"fixed_{e}"]); r["unit"] = "fold-seed pair" if ns > 1 else "fold"
+            tests[f"fagi_no_dp_vs_gnn_fixed_{e}"] = r
     return {"fpr_target": FPR_TARGET, "seeds": list(seeds), "models": summ, "tests": tests}
 
 

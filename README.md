@@ -100,7 +100,7 @@ tests/
 
 ## Provenance of the synthetic results
 
-`exp2.json`, `exp2_hard.json` and `ablation_hard.json` were produced before the round-3 changes to `fagi/training.py` (optional optimizer-state arguments) and `fagi/federated/server.py` (filter off by default). Both changes keep the old behavior at their defaults, which is how those experiments call them, so rerunning the scripts reproduces the same numbers. The graph-structure attack in `exp3.json` is computed on the hard generator (`--api_data data/synthetic/sessions_hard.json`).
+`exp2.json`, `exp2_hard.json` and `ablation_hard.json` were produced before the round-3 changes to `fagi/training.py` (optional optimizer-state arguments) and `fagi/federated/server.py` (filter off by default). Both changes keep the old behavior at their defaults, which is how those experiments call them, and rerunning the three scripts reproduces every number in them exactly (checked in round 3). The graph-structure attack in `exp3.json` is computed on the hard generator (`--api_data data/synthetic/sessions_hard.json`).
 
 ## Changes from the first version of this repository
 
