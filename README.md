@@ -57,6 +57,7 @@ This regenerates both synthetic datasets, runs every experiment, writes `experim
 | `experiments/ablation.py` | Component ablation, σ sweep (privacy–utility), membership inference with an overfit positive control |
 | `experiments/mia_canary.py` | Canary audit: 200 label-flipped private flows per fold, half included; AUC with bootstrap CI and an empirical ε lower bound |
 | `experiments/exp5_temporal.py` | Temporal split: the earlier 70% of each day file trains, the later 30% tests |
+| `experiments/robust_checks.py` | Worst-case recall at matched false-positive rates (0.5%, 1%, 2%; test- and pool-calibrated thresholds) for the CV, ablation and temporal models; adaptive-PGD restart curve |
 | `experiments/exp2_api_native.py` | Synthetic API sessions: all attacks, lateral movement, SQL injection; payload-feature ablation |
 | `experiments/exp4_federated.py` | Held-out organization, FedAvg with and without client-side DP-SGD, ε-matched centralized DP, membership inference |
 

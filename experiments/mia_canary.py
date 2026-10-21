@@ -123,6 +123,8 @@ def main():
         pooled = float(roc_auc_score(np.r_[np.ones(len(li)), np.zeros(len(lo))], -np.r_[li, lo]))
         summary[name] = {"auc_pooled": pooled, "auc_pooled_ci95": bootstrap_auc(li, lo),
                          "empirical_eps_lower_bound": empirical_eps_lower_bound(li, lo, CONFIG["dp_delta"]),
+                         "eps_lower_bound_over_splits": ms([empirical_eps_lower_bound(li, lo, CONFIG["dp_delta"], seed=k)
+                                                            for k in range(10)]),
                          "auc_per_fold": ms([p[name]["auc"] for p in per_fold]),
                          "fit_rate_in": ms([p[name]["canary_fit_rate_in"] for p in per_fold]),
                          "fit_rate_out": ms([p[name]["canary_fit_rate_out"] for p in per_fold]),
