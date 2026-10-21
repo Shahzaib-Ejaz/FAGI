@@ -72,7 +72,7 @@
       0
     ]
   },
-  "structure_data": "data/synthetic/sessions_final.json",
+  "structure_data": "data/synthetic/sessions_hard.json",
   "cicids2017": {
     "eps_sweep_worst_recall": {
       "rf": {
