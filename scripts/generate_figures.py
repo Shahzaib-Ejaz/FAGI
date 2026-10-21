@@ -106,6 +106,16 @@ def fig_privacy(r, out, dpi):
         ax.errorbar(xs, ys, yerr=es, color=c, marker=mk, linestyle=ls, linewidth=1.3, markersize=3.8, capsize=1.5,
                     elinewidth=0.6, label=name)
         ax.axhline(pct(nodp[field]["mean"]), color=c, linewidth=0.7, alpha=0.7, linestyle=(0, (1, 2)))
+    fx = r.get("robust_checks", {}).get("fixed_fpr_seed0", {}).get("models", {})
+    if fx:
+        key = {0.6: "fagi_sigma0.6", 1.1: "fagi", 2.0: "fagi_sigma2.0", 4.0: "fagi_sigma4.0"}
+        pts = [(x["epsilon"]["mean"], fx[key[x["sigma"]]]["fixed_0.5"]) for x in dp if key.get(x["sigma"]) in fx]
+        ax.errorbar([p[0] for p in pts], [pct(p[1]["mean"]) for p in pts], yerr=[pct(p[1]["std"]) for p in pts],
+                    color="#c2410c", marker="D", linestyle="-.", linewidth=1.3, markersize=3.6, capsize=1.5,
+                    elinewidth=0.6, label="Attack recall, $\\epsilon_{adv}$=0.5, at 1% FPR")
+        if "fagi_no_dp" in fx:
+            ax.axhline(pct(fx["fagi_no_dp"]["fixed_0.5"]["mean"]), color="#c2410c", linewidth=0.7, alpha=0.7,
+                       linestyle=(0, (1, 2)))
     for x in dp:
         ax.annotate(f"σ={x['sigma']}", (x["epsilon"]["mean"], pct(x["worst_recall_eps0.5"]["mean"])),
                     textcoords="offset points", xytext=(0, 7), ha="center", fontsize=5.6, color="#555555")
@@ -116,7 +126,7 @@ def fig_privacy(r, out, dpi):
     ax.set_xticks(ticks)
     ax.set_xticklabels([str(t) for t in ticks])
     ax.set_xlim(0.38, 20)
-    ax.set_ylim(25, 103)
+    ax.set_ylim(0, 103)
     ax.set_xlabel("Privacy budget $\\epsilon_{DP}$ (δ = 10$^{-6}$)")
     ax.set_ylabel("%")
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, 1.2), ncol=2)
