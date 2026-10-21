@@ -70,13 +70,16 @@ def fig_benchmark(r, out, dpi):
 
 
 def fig_sweep(r, out, dpi):
+    fx = r.get("robust_checks", {}).get("fixed_fpr", {}).get("models", {})
+    matched = all(k in fx and "fixed_0.01_0.02" in fx[k] for k in SERIES)
     sw = r["exp3"]["cicids2017"]["eps_sweep_worst_recall"]
     fig, ax = plt.subplots(figsize=(3.5, 2.4))
     for key, (name, c, mk, ls) in SERIES.items():
         eps = sorted(sw[key], key=float)
         xs = [float(e) for e in eps]
-        ys = [pct(sw[key][e]["mean"]) for e in eps]
-        es = [pct(sw[key][e]["std"]) for e in eps]
+        src = [fx[key][f"fixed_0.01_{e}"] for e in eps] if matched else [sw[key][e] for e in eps]
+        ys = [pct(v["mean"]) for v in src]
+        es = [pct(v["std"]) for v in src]
         ax.errorbar(xs, ys, yerr=es, color=c, marker=mk, linestyle=ls, linewidth=1.3, markersize=3.8, capsize=1.5,
                     elinewidth=0.6, label=name)
     ax.set_xscale("log")
@@ -85,7 +88,7 @@ def fig_sweep(r, out, dpi):
     ax.set_xticks([0.02, 0.05, 0.1, 0.2, 0.5])
     ax.set_xticklabels(["0.02", "0.05", "0.1", "0.2", "0.5"])
     ax.set_xlabel("Attack budget $\\epsilon_{adv}$ (L∞, standardized units)")
-    ax.set_ylabel("Attack recall, worst case (%)")
+    ax.set_ylabel("Worst-case recall at 1% FPR (%)" if matched else "Attack recall, worst case (%)")
     ax.set_ylim(-3, 103)
     ax.legend(loc="lower left", ncol=1)
     save(fig, out, "fig2_eps_sweep.png", dpi)
