@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="FAGI experimental results: adversarial robustness at matched false-positive rates, differential privacy, temporal split, synthetic API sessions, and federated evaluation.">
+  <title>FAGI — Experimental results</title>
+  <style>
+    :root {
+      --paper: #fff;
+      --canvas: #f7f7f4;
+      --rail: #eeefea;
+      --ink: #202d34;
+      --secondary: #53616a;
+      --quiet: #66716f;
+      --line: #d9ddd9;
+      --soft-line: #e9ece8;
+      --accent: #24566b;
+      --accent-soft: #edf3f5;
+      --serif: Georgia, "Times New Roman", serif;
+      --sans: "Segoe UI", Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 30px; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font: 14px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, a:focus-visible, input:focus-visible, svg:focus-visible, .table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    button svg { width: 15px; height: 15px; flex: none; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+    .skip-link { position: fixed; z-index: 20; left: 20px; top: -80px; background: var(--paper); padding: 10px 18px; }
+    .skip-link:focus { top: 12px; }
+    .rail { position: fixed; inset: 0 auto 0 0; width: 216px; background: var(--rail); border-right: 1px solid var(--line); padding: 33px 23px; display: flex; flex-direction: column; z-index: 5; }
+    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+    .brand-mark { width: 34px; height: 38px; display: grid; place-items: center; border: 1px solid #8a999a; color: var(--accent); font: 27px/1 var(--serif); }
+    .brand-name { font-size: 19px; font-weight: 650; letter-spacing: .035em; }
+    .brand-name small { display: block; color: var(--secondary); font-size: 10px; font-weight: 400; letter-spacing: .025em; margin-top: 1px; }
+    .nav-label { margin: 57px 10px 12px; font-size: 10px; letter-spacing: .15em; font-weight: 650; color: var(--quiet); }
+    .section-nav { display: grid; gap: 5px; }
+    .section-nav a { display: flex; align-items: center; gap: 13px; padding: 10px 12px; text-decoration: none; color: #52615f; font-size: 12px; border-left: 2px solid transparent; }
+    .section-nav a span { color: #78827c; font: 10px var(--mono); }
+    .section-nav a:hover { background: #e5e8e1; color: var(--ink); }
+    .section-nav a.active { background: #e0e6e1; color: #234f5a; border-left-color: var(--accent); font-weight: 600; }
+    .rail-note { margin-top: auto; padding: 20px 10px 0; border-top: 1px solid #d4dad1; color: var(--quiet); font-size: 11px; }
+    .rail-note p { margin: 0 0 10px; }
+    .rail-note code { color: var(--ink); font: 11px var(--mono); }
+    .rail-note .notation { margin-top: 18px; font-size: 10px; line-height: 1.65; }
+    .workspace { margin-left: 216px; }
+    .topbar { min-height: 67px; border-bottom: 1px solid var(--line); padding: 0 42px; display: flex; justify-content: space-between; align-items: center; gap: 16px; background: #fafbf8; }
+    .breadcrumb { font-size: 11px; color: var(--quiet); letter-spacing: .02em; }
+    .breadcrumb b { color: var(--secondary); font-weight: 500; }
+    .breadcrumb span { margin: 0 10px; color: #9aa39a; }
+    .toolbar { display: flex; gap: 10px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 13px; border: 1px solid #cbd2cc; border-radius: 3px; background: transparent; color: var(--ink); font-size: 11px; font-weight: 500; white-space: nowrap; line-height: 1.5; }
+    .button:hover { border-color: var(--accent); background: #eef2ed; }
+    .button.primary { color: #fff; background: #2c4d5a; border-color: #2c4d5a; }
+    .button.primary:hover { background: #203f4c; }
+    main { max-width: 1350px; margin: 0 auto; padding: 40px 42px 24px; }
+    .eyebrow { color: var(--accent); font-size: 10px; font-weight: 650; letter-spacing: .16em; text-transform: uppercase; }
+    .hero h1 { margin: 11px 0 10px; font: 400 clamp(34px, 3.7vw, 49px)/1.13 var(--serif); letter-spacing: -.035em; }
+    .hero-description { max-width: 720px; margin: 0; color: var(--secondary); font-size: 14px; line-height: 1.7; }
+    .study-line { display: flex; flex-wrap: wrap; gap: 0; margin: 19px 0 25px; color: var(--quiet); font-size: 11px; }
+    .study-line span + span::before { content: "·"; padding: 0 11px; color: #89938b; }
+    .study-line span:first-child { color: var(--ink); font-weight: 600; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0; padding: 21px 0 22px; border-top: 1px solid #b8c3bf; border-bottom: 1px solid var(--line); }
+    .summary > div { min-width: 0; padding: 0 22px; border-left: 1px solid var(--line); }
+    .summary > div:first-child { padding-left: 0; border-left: 0; }
+    .summary dt { color: var(--secondary); font-size: 10px; font-weight: 500; margin-bottom: 5px; }
+    .summary dd { margin: 0; font: 400 31px/1.25 var(--serif); letter-spacing: -.035em; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; }
+    .summary dd .unit { font: 14px var(--sans); margin-left: 2px; color: var(--secondary); }
+    .summary dd .times { font-size: 20px; color: #83918d; margin: 0 3px; }
+    .summary small { display: block; color: var(--quiet); font: 10px/1.5 var(--sans); letter-spacing: 0; margin-top: 6px; white-space: normal; }
+    .summary .featured dd { color: var(--accent); }
+    .results-section { padding-top: 37px; scroll-margin-top: 24px; }
+    .section-heading { display: flex; align-items: baseline; gap: 13px; margin-bottom: 9px; }
+    .section-number { color: #71817c; font: 10px var(--mono); flex: none; }
+    h2 { margin: 0; font: 400 25px/1.2 var(--serif); letter-spacing: -.015em; }
+    .section-description { color: var(--secondary); font-size: 12px; margin: 0 0 18px; max-width: 890px; line-height: 1.7; }
+    .table-wrap { width: 100%; overflow: auto; background: var(--paper); border-top: 1px solid #879b9d; border-bottom: 1px solid #c3cdc8; scrollbar-width: thin; }
+    table { width: 100%; border-collapse: collapse; font-size: 11.5px; font-variant-numeric: tabular-nums lining-nums; }
+    caption { text-align: left; padding: 13px 16px 12px; font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--soft-line); color: var(--ink); background: var(--paper); }
+    .table-label { color: var(--quiet); font: 9px var(--mono); letter-spacing: .01em; margin-right: 10px; font-weight: 400; }
+    th, td { padding: 12px 15px; text-align: right; border-bottom: 1px solid var(--soft-line); white-space: nowrap; }
+    thead th { background: #f4f6f2; font-size: 10px; line-height: 1.5; font-weight: 600; color: var(--secondary); vertical-align: bottom; }
+    thead th small { display: block; font-size: 9px; color: #6d7b74; font-weight: 400; margin-top: 2px; }
+    th:first-child, td:first-child { text-align: left; }
+    tbody th { text-align: left; font-weight: 450; color: #33434b; }
+    tbody th small { display: block; color: var(--quiet); font-size: 10px; font-weight: 400; }
+    tbody tr:last-child > * { border-bottom: 0; }
+    tbody tr:hover > * { background-color: #f8faf7; }
+    .uncertainty { color: #7a8589; font-size: .94em; }
+    td.best { font-weight: 650; color: var(--ink); }
+    tr.focus-row > * { background: var(--accent-soft); color: #21495c; }
+    tr.focus-row > th { box-shadow: inset 3px 0 var(--accent); font-weight: 650; }
+    tr.focus-row .uncertainty { color: #5b7b8b; }
+    tr.focus-row:hover > * { background: #e5eef2; }
+    .benchmark-table { min-width: 790px; }
+    .benchmark-table th:first-child { width: 25%; }
+    .benchmark-table tbody th { white-space: normal; min-width: 185px; }
+    .table-note { color: var(--quiet); margin: 9px 0 0; font-size: 10px; line-height: 1.7; }
+    .table-note strong { color: var(--secondary); font-weight: 600; }
+    .chart-figure { margin: 0 0 20px; background: var(--paper); border: 1px solid var(--line); }
+    .figure-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 20px 0; }
+    .figure-heading h3 { font-size: 12px; font-weight: 600; margin: 0; }
+    .chart-actions { display: flex; gap: 14px; }
+    .text-button { background: none; border: none; border-bottom: 1px solid transparent; color: var(--accent); padding: 1px 0; font-size: 10px; }
+    .text-button:hover { border-bottom-color: var(--accent); }
+    .plot { position: relative; margin: 8px 14px 0; }
+    .plot-scroll { overflow-x: auto; scrollbar-width: thin; }
+    .chart-svg { display: block; width: 100%; height: auto; min-width: 580px; font-family: var(--sans); }
+    .chart-tooltip { position: absolute; top: 27px; right: 18px; min-width: 192px; padding: 12px 14px; background: #fffffff7; border: 1px solid #bccbc9; box-shadow: 0 3px 10px #1832440a; font-size: 10px; pointer-events: none; z-index: 2; }
+    .chart-tooltip strong { display: block; font-weight: 600; margin-bottom: 7px; }
+    .tooltip-row { display: flex; align-items: center; gap: 7px; margin: 3px 0; }
+    .tooltip-row i { width: 7px; height: 7px; background: var(--series-color); display: inline-block; }
+    .tooltip-row b { font-weight: 500; margin-left: auto; padding-left: 14px; }
+    .legend { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 22px; padding: 5px 21px 18px; border: 0; margin: 0; min-width: 0; }
+    .legend-item { display: flex; align-items: center; gap: 7px; cursor: pointer; color: #718078; font-size: 10px; }
+    .legend-item input { margin: 0; width: 12px; height: 12px; accent-color: var(--series-color); flex: none; }
+    .legend-item:has(input:checked) { color: #33444a; }
+    .legend-swatch { display: inline-block; width: 19px; border-top: 2px solid var(--series-color); opacity: .4; flex: none; }
+    .legend-item:has(input:checked) .legend-swatch { opacity: 1; }
+    .legend-item[data-dashed="true"] .legend-swatch { border-top-style: dashed; }
+    .figure-caption { margin: 0; padding: 11px 20px; background: #f9faf7; border-top: 1px solid var(--soft-line); font-size: 10px; color: var(--quiet); line-height: 1.65; }
+    .figure-caption strong { color: var(--secondary); font-weight: 600; }
+    .budget-table { min-width: 645px; }
+    .minor-heading { margin: 23px 0 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .minor-heading h3 { margin: 0; font-size: 13px; font-weight: 600; }
+    .minor-heading span { font-size: 10px; color: var(--quiet); }
+    .ablation-table { min-width: 710px; }
+    .privacy-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; margin-top: 23px; align-items: start; }
+    .privacy-grid > div { min-width: 0; }
+    .privacy-grid .minor-heading { margin-top: 0; min-height: 22px; }
+    .privacy-table { min-width: 470px; }
+    .privacy-grid th, .privacy-grid td { padding: 11px 12px; font-size: 10.5px; }
+    .privacy-grid thead th { font-size: 9px; }
+    .mia-table { min-width: 300px; }
+    .synthetic-table { min-width: 465px; }
+    .federated-table { min-width: 580px; }
+    .data-bar { background-image: linear-gradient(to right, #dce6e840 0%, #dce6e840 var(--value), transparent var(--value), transparent 100%); background-size: calc(100% - 24px) 4px; background-position: 12px calc(100% - 4px); background-repeat: no-repeat; }
+    .federated-table th:first-child { width: 46%; }
+    .methods { margin-top: 39px; padding-top: 22px; border-top: 1px solid #a7b7b1; }
+    .methods h2 { font-size: 21px; }
+    .method-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 35px; margin-top: 16px; }
+    .method-columns h3 { margin: 0 0 5px; font-size: 11px; font-weight: 600; }
+    .method-columns p { margin: 0; font-size: 11px; color: var(--secondary); line-height: 1.8; }
+    .provenance { margin-top: 19px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: 10px; color: var(--quiet); display: flex; flex-wrap: wrap; gap: 5px 20px; }
+    code { font: .96em var(--mono); overflow-wrap: anywhere; }
+    footer { display: flex; justify-content: space-between; gap: 15px; padding-top: 19px; font-size: 9px; color: var(--quiet); letter-spacing: .025em; }
+    .no-script { border-left: 2px solid var(--accent); padding-left: 10px; color: var(--secondary); font-size: 11px; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+    .seg button { background: transparent; border: 0; padding: 3px 10px; font-size: 10px; color: var(--secondary); }
+    .seg button + button { border-left: 1px solid var(--line); }
+    .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+    .seg button:not([aria-pressed="true"]):hover { background: var(--accent-soft); }
+    .figure-heading .chart-actions { align-items: center; }
+    .stack > * + * { margin-top: 0; }
+    .restart-table { min-width: 420px; }
+    .wide-table { min-width: 900px; }
+    .wide-table tbody th { white-space: normal; min-width: 170px; }
+    .note-strong { color: var(--secondary); font-weight: 600; }
+    @media (min-width: 1600px) { main { padding-top: 48px; } .hero h1 { font-size: 50px; } table { font-size: 12px; } th, td { padding-block: 14px; } }
+    @media (max-width: 1230px) { .rail { width: 190px; padding-inline: 18px; } .workspace { margin-left: 190px; } main { padding-inline: 30px; } .topbar { padding-inline: 30px; } .summary > div { padding-inline: 16px; } .summary dd { font-size: 28px; } .privacy-grid { grid-template-columns: 1fr; gap: 23px; } .privacy-grid th, .privacy-grid td { padding: 12px 15px; font-size: 11.5px; } }
+    @media (max-width: 900px) { .rail { position: relative; width: auto; padding: 18px 24px 0; border-right: 0; border-bottom: 1px solid var(--line); } .brand-mark { width: 28px; height: 31px; font-size: 22px; } .brand-name { font-size: 16px; } .brand-name small { display: inline; margin-left: 10px; font-size: 10px; } .nav-label, .rail-note { display: none; } .section-nav { display: flex; gap: 12px; margin-top: 17px; overflow-x: auto; scrollbar-width: thin; } .section-nav a { white-space: nowrap; border-left: 0; border-bottom: 2px solid transparent; padding: 10px 3px; font-size: 11px; gap: 7px; } .section-nav a.active { background: transparent; border-bottom-color: var(--accent); } .section-nav a:hover { background: transparent; } .workspace { margin-left: 0; } .topbar { min-height: 58px; padding-inline: 24px; } main { padding: 30px 24px 24px; } .hero h1 { font-size: 41px; } }
+    @media (max-width: 590px) { .rail { padding-inline: 19px; } .brand-name small { margin-left: 8px; } .section-nav { gap: 16px; } .topbar { padding: 13px 19px; min-height: 0; } .breadcrumb { display: none; } .toolbar { width: 100%; justify-content: flex-end; gap: 8px; } .button { padding: 7px 11px; font-size: 10px; } main { padding: 28px 19px 22px; } .hero h1 { font-size: 35px; } .hero-description { font-size: 12px; } .eyebrow { font-size: 9px; } .study-line { font-size: 10px; margin-bottom: 21px; row-gap: 3px; } .study-line span + span::before { padding-inline: 7px; } .summary { grid-template-columns: 1fr 1fr; padding-block: 16px; row-gap: 19px; } .summary > div { padding-inline: 15px; } .summary > div:nth-child(3) { border-left: 0; padding-left: 0; } .summary dt { font-size: 10px; } .summary dd { font-size: 29px; } .summary small { font-size: 9px; } .results-section { padding-top: 30px; } h2 { font-size: 23px; } .section-heading { gap: 10px; } .section-description { font-size: 11px; } .table-note { font-size: 9px; } .figure-heading { padding-inline: 14px; align-items: flex-start; } .figure-heading h3 { font-size: 11px; max-width: 180px; } .chart-actions { gap: 10px; } .legend { grid-template-columns: 1fr 1fr; gap: 10px 12px; padding-inline: 15px; } .legend-item { font-size: 9px; gap: 5px; } .legend-swatch { width: 14px; } .figure-caption { padding-inline: 14px; font-size: 9px; } .plot { margin-inline: 7px; } .chart-tooltip { right: 10px; top: 30px; min-width: 165px; font-size: 9px; } .method-columns { grid-template-columns: 1fr; gap: 17px; } .provenance { font-size: 9px; } footer { font-size: 8px; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @page { size: A4 portrait; margin: 14mm; }
+    @media print {
+      :root { --canvas: #fff; --paper: #fff; --ink: #17242b; --quiet: #56615f; --line: #c5cdca; }
+      html { scroll-behavior: auto; }
+      body { background: #fff; font-size: 9pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .rail, .topbar, .skip-link, .chart-actions, .chart-tooltip, .no-script { display: none !important; }
+      .seg { display: none; }
+      .workspace { margin: 0; }
+      main { max-width: none; padding: 0; }
+      .eyebrow { font-size: 7pt; }
+      .hero h1 { font-size: 29pt; margin-top: 8px; }
+      .hero-description { font-size: 9pt; }
+      .study-line { font-size: 7pt; margin-block: 10px 14px; }
+      .summary { grid-template-columns: repeat(4, 1fr); padding-block: 12px; gap: 0; }
+      .summary > div { padding-inline: 12px; }
+      .summary > div:nth-child(3) { border-left: 1px solid var(--line); padding-left: 12px; }
+      .summary dt { font-size: 7pt; }
+      .summary dd { font-size: 22pt; }
+      .summary small { font-size: 6.5pt; }
+      .results-section { padding-top: 23px; }
+      h2 { font-size: 17pt; }
+      h2, h3, .section-heading, .minor-heading, caption { break-after: avoid; }
+      .section-description { font-size: 8pt; margin-bottom: 10px; }
+      .table-wrap, .plot-scroll { overflow: visible; }
+      table, .benchmark-table, .budget-table, .ablation-table, .privacy-table, .mia-table, .synthetic-table, .federated-table, .restart-table, .wide-table { min-width: 0; width: 100%; font-size: 7.5pt; }
+      caption { padding: 8px 7px; font-size: 8pt; }
+      th, td, .privacy-grid th, .privacy-grid td { padding: 8px 7px; font-size: 7.2pt; }
+      thead { display: table-header-group; }
+      thead th, .privacy-grid thead th { font-size: 6.5pt; }
+      thead th small { font-size: 6pt; }
+      .benchmark-table tbody th { min-width: 0; }
+      tbody th small { font-size: 6.5pt; }
+      tbody tr { break-inside: avoid; }
+      .table-note { font-size: 7pt; }
+      .table-label { font-size: 6pt; }
+      .chart-figure { break-inside: avoid; margin-bottom: 16px; }
+      .figure-heading { padding: 12px 14px 0; }
+      .figure-heading h3 { font-size: 9pt; }
+      .chart-svg { min-width: 0; width: 100%; }
+      .legend { grid-template-columns: repeat(3, 1fr); gap: 7px 15px; padding: 3px 15px 12px; }
+      .legend-item { font-size: 7pt; }
+      .legend-item input { width: 9px; height: 9px; }
+      .figure-caption { font-size: 7pt; padding: 9px 14px; }
+      .privacy-grid { grid-template-columns: 1fr; gap: 18px; }
+      .privacy-grid > div { break-inside: avoid; }
+      .minor-heading h3 { font-size: 9pt; }
+      .minor-heading span { font-size: 7pt; }
+      .method-columns { grid-template-columns: 1fr 1fr; gap: 22px; }
+      .method-columns p { font-size: 7.5pt; }
+      .method-columns h3 { font-size: 8pt; }
+      .methods { margin-top: 22px; break-inside: avoid; }
+      .provenance { font-size: 6.5pt; }
+      footer { font-size: 6.5pt; }
+    }
+  </style>
+</head>
+<body id="top">
+  <a class="skip-link" href="#main">Skip to results</a>
+  <aside class="rail" aria-label="Results navigation">
+    <a class="brand" href="#top" aria-label="FAGI results, back to top">
+      <span class="brand-mark" aria-hidden="true">F</span>
+      <span class="brand-name">FAGI<small>Research results</small></span>
+    </a>
+    <p class="nav-label">CONTENTS</p>
+    <nav class="section-nav" aria-label="Sections">
+      <a class="active" href="#benchmark" aria-current="location"><span>01</span> Benchmark</a>
+      <a href="#robustness"><span>02</span> Robustness</a>
+      <a href="#privacy"><span>03</span> Ablation &amp; privacy</a>
+      <a href="#temporal"><span>04</span> Temporal split</a>
+      <a href="#synthetic"><span>05</span> API sessions</a>
+      <a href="#federated"><span>06</span> Federated</a>
+    </nav>
+    <div class="rail-note">
+      <p>Evaluation record<br><code>@@HASH@@</code></p>
+      <p class="notation">Values are mean ± standard deviation unless stated otherwise.</p>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="breadcrumb">Research<span>/</span><b>Experimental results</b></div>
+      <div class="toolbar">
+        <button class="button" type="button" id="export-csv">
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M10 2.5v9m-3-3 3 3 3-3M3.5 12.5v4h13v-4"/></svg>
+          Export CSV
+        </button>
+        <button class="button primary" type="button" id="print-report">
+          <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M5 7V2.5h10V7M5 13H2.5V7h15v6H15M5 11h10v6.5H5z"/><circle cx="14.5" cy="9" r=".5" fill="currentColor" stroke="none"/></svg>
+          Print / PDF
+        </button>
+      </div>
+    </header>
+    <main id="main">
+      <header class="hero">
+        <div class="eyebrow">FAGI · Empirical evaluation</div>
+        <h1>Experimental results</h1>
+        <p class="hero-description">Adversarial robustness, differential privacy, and cross-organization generalization across benchmark and synthetic data. Robustness is compared at a matched false-positive rate as well as at each model's default threshold.</p>
+        <div class="study-line">@@STUDY@@</div>
+        <dl class="summary" aria-label="FAGI benchmark summary">@@SUMMARY@@</dl>
+      </header>
+
+      <section class="results-section" id="benchmark" aria-labelledby="benchmark-heading">
+        <div class="section-heading"><span class="section-number">01</span><h2 id="benchmark-heading">CICIDS2017 benchmark</h2></div>
+        <p class="section-description">@@BENCH_DESC@@</p>
+        <div class="table-wrap" role="region" aria-label="CICIDS2017 benchmark table; scroll horizontally on small screens" tabindex="0">
+          <table class="benchmark-table wide-table" data-dataset="CICIDS2017 benchmark">
+            <caption><span class="table-label">TABLE 1</span>Predictive performance and adversarial robustness</caption>
+            @@T1@@
+          </table>
+        </div>
+        <p class="table-note"><strong>Reading the table.</strong> Bold values mark the best value in each column: highest accuracy or recall, lowest FPR. Shading identifies FAGI. Values are mean ± standard deviation over folds and seeds. @@T1_NOTE@@</p>
+      </section>
+
+      <section class="results-section" id="robustness" aria-labelledby="robustness-heading">
+        <div class="section-heading"><span class="section-number">02</span><h2 id="robustness-heading">Robustness across attack budgets</h2></div>
+        <p class="section-description">Worst-case attack recall as the perturbation budget increases. Switch the chart between every model at a matched @@FPR@@ false-positive rate (Table 2) and every model at its own default threshold (Table 3).</p>
+        <figure class="chart-figure" aria-labelledby="chart-title" aria-describedby="chart-caption">
+          <div class="figure-heading"><h3 id="chart-title">Attack recall vs. perturbation budget</h3><div class="chart-actions"><div class="seg" role="group" aria-label="Threshold basis"><button type="button" id="basis-matched" aria-pressed="true">Matched @@FPR@@ FPR</button><button type="button" id="basis-default" aria-pressed="false">Default threshold</button></div><button class="text-button" type="button" id="show-all">Show all</button><button class="text-button" type="button" id="reset-chart">Reset</button></div></div>
+          <div class="plot">
+            <div class="plot-scroll"><svg class="chart-svg" id="budget-chart" viewBox="0 0 900 340" role="img" tabindex="0" aria-labelledby="svg-title svg-description" aria-describedby="chart-instructions"><title id="svg-title">Attack recall across perturbation budgets</title><desc id="svg-description">Worst-case attack recall from 0 to 100 percent at attack budgets 0.02, 0.05, 0.1, 0.2 and 0.5. Exact values appear in Tables 2 and 3.</desc></svg></div>
+            <output class="chart-tooltip" id="chart-tooltip" hidden></output>
+          </div>
+          <p class="sr-only" id="chart-instructions">Toggle model checkboxes to compare curves, and switch between matched and default thresholds with the buttons above the chart. When the chart is focused, use the left and right arrow keys to inspect attack budgets. On narrow screens the plot scrolls horizontally.</p>
+          <fieldset class="legend" id="chart-legend"><legend class="sr-only">Models displayed in the chart</legend></fieldset>
+          <figcaption class="figure-caption" id="chart-caption"></figcaption>
+        </figure>
+        <noscript><p class="no-script">The interactive chart requires JavaScript. All reported values remain available in the tables below.</p></noscript>
+        <div class="table-wrap" role="region" aria-label="Attack budget sweep at a matched false-positive rate; scroll horizontally on small screens" tabindex="0">
+          <table id="budget-table-matched" class="budget-table" data-dataset="Attack budget sweep, matched @@FPR@@ FPR: worst-case attack recall (%)">
+            <caption><span class="table-label">TABLE 2</span>Attack budget sweep at a matched @@FPR@@ false-positive rate <span class="uncertainty">· worst-case attack recall, %</span></caption>
+            @@T2@@
+          </table>
+        </div>
+        <p class="table-note">@@T2_NOTE@@</p>
+        <div class="table-wrap" role="region" aria-label="Attack budget sweep at default thresholds; scroll horizontally on small screens" tabindex="0" style="margin-top:20px">
+          <table id="budget-table-default" class="budget-table" data-dataset="Attack budget sweep, default thresholds: worst-case attack recall (%)">
+            <caption><span class="table-label">TABLE 3</span>Attack budget sweep at each model's default threshold <span class="uncertainty">· worst-case attack recall, %</span></caption>
+            @@T3@@
+          </table>
+        </div>
+        <p class="table-note">Sweep values are retained at one-decimal precision. The source identifiers <code>mlp_at</code>, <code>mlp_dp</code>, and <code>fagi_no_dp</code> are displayed as MLP + PGD training, MLP + PGD + DP-SGD, and FAGI − DP-SGD. Default-threshold recall depends on how much benign traffic each model flags (Table 1, FPR column).</p>
+
+        <div class="minor-heading"><h3>Operating-point sensitivity</h3><span>ε = 0.5</span></div>
+        <div class="table-wrap" role="region" aria-label="Operating point table; scroll horizontally on small screens" tabindex="0">
+          <table class="ablation-table" data-dataset="Operating-point sensitivity, attack budget 0.5">
+            <caption><span class="table-label">TABLE 4</span>Worst-case recall at three false-positive rates</caption>
+            @@T4@@
+          </table>
+        </div>
+        <p class="table-note">@@T4_NOTE@@</p>
+
+        <div class="minor-heading"><h3>Attack convergence</h3><span>Seed 0 · ε = 0.5</span></div>
+        <div class="table-wrap" role="region" aria-label="Restart table; scroll horizontally on small screens" tabindex="0">
+          <table class="restart-table" data-dataset="Adaptive PGD restarts, seed 0, attack budget 0.5">
+            <caption><span class="table-label">TABLE 5</span>Worst-case recall as adaptive PGD restarts increase</caption>
+            @@T5@@
+          </table>
+        </div>
+        <p class="table-note">@@T5_NOTE@@</p>
+      </section>
+
+      <section class="results-section" id="privacy" aria-labelledby="privacy-heading">
+        <div class="section-heading"><span class="section-number">03</span><h2 id="privacy-heading">Ablation &amp; privacy</h2></div>
+        <p class="section-description">Component ablations and privacy measurements on CICIDS2017, seed 0. These results are reported separately from the multi-seed benchmark above.</p>
+        <div class="table-wrap" role="region" aria-label="Component ablation table; scroll horizontally on small screens" tabindex="0">
+          <table class="ablation-table" data-dataset="CICIDS2017 ablation, seed 0">
+            <caption><span class="table-label">TABLE 6</span>Component ablation</caption>
+            @@T6@@
+          </table>
+        </div>
+        <p class="table-note">@@T6_NOTE@@</p>
+
+        <div class="minor-heading"><h3>Noise multiplier sweep</h3><span>Seed 0</span></div>
+        <div class="table-wrap" role="region" aria-label="Privacy noise sweep table; scroll horizontally on small screens" tabindex="0">
+          <table class="ablation-table" data-dataset="CICIDS2017 privacy noise sweep, seed 0">
+            <caption><span class="table-label">TABLE 7</span>Privacy and performance</caption>
+            @@T7@@
+          </table>
+        </div>
+        <p class="table-note">σ is the noise multiplier. The highlighted row is the full FAGI configuration. @@T7_NOTE@@</p>
+
+        <div class="minor-heading"><h3>Privacy audits</h3><span>Membership inference and canaries</span></div>
+        <div class="table-wrap" role="region" aria-label="Privacy audit table; scroll horizontally on small screens" tabindex="0">
+          <table class="benchmark-table wide-table" data-dataset="Privacy audits: membership inference and canaries">
+            <caption><span class="table-label">TABLE 8</span>Empirical privacy measurements</caption>
+            @@T8@@
+          </table>
+        </div>
+        <p class="table-note">@@T8_NOTE@@</p>
+      </section>
+
+      <section class="results-section" id="temporal" aria-labelledby="temporal-heading">
+        <div class="section-heading"><span class="section-number">04</span><h2 id="temporal-heading">Temporal split</h2></div>
+        <p class="section-description">@@TEMPORAL_DESC@@</p>
+        <div class="table-wrap" role="region" aria-label="Temporal split table; scroll horizontally on small screens" tabindex="0">
+          <table class="benchmark-table wide-table" data-dataset="CICIDS2017 temporal split">
+            <caption><span class="table-label">TABLE 9</span>Train on earlier traffic, test on later traffic</caption>
+            @@T9@@
+          </table>
+        </div>
+        <p class="table-note">@@T9_NOTE@@</p>
+      </section>
+
+      <section class="results-section" id="synthetic" aria-labelledby="synthetic-heading">
+        <div class="section-heading"><span class="section-number">05</span><h2 id="synthetic-heading">Synthetic API sessions</h2></div>
+        <p class="section-description">Accuracy under all attacks for the original and hard session generators.</p>
+        <div class="table-wrap" role="region" aria-label="Synthetic API session results; scroll horizontally on small screens" tabindex="0">
+          <table class="synthetic-table" data-dataset="Synthetic API sessions, all attacks: accuracy (%)">
+            <caption><span class="table-label">TABLE 10</span>Accuracy across session generators</caption>
+            @@T10@@
+          </table>
+        </div>
+        <p class="table-note">These values report accuracy, rather than the attack-recall metric used in Tables 1–9. Underlines show magnitude on a common 0–100% scale. Results on synthetic data are a sanity study of the API setting, not evidence about real APIs.</p>
+      </section>
+
+      <section class="results-section" id="federated" aria-labelledby="federated-heading">
+        <div class="section-heading"><span class="section-number">06</span><h2 id="federated-heading">Federated evaluation</h2></div>
+        <p class="section-description">Accuracy on the held-out organization, comparing centralized, federated, and local training settings.</p>
+        <div class="table-wrap" role="region" aria-label="Federated evaluation table; scroll horizontally on small screens" tabindex="0">
+          <table class="federated-table" data-dataset="Federated evaluation: held-out organization accuracy (%)">
+            <caption><span class="table-label">TABLE 11</span>Generalization to a held-out organization</caption>
+            @@T11@@
+          </table>
+        </div>
+        <p class="table-note">@@T11_NOTE@@</p>
+      </section>
+
+      <section class="methods" aria-labelledby="methods-heading">
+        <h2 id="methods-heading">Methods &amp; notation</h2>
+        <div class="method-columns">
+          <div><h3>Evaluation protocol</h3><p>@@METHODS_PROTOCOL@@</p></div>
+          <div><h3>Metric notation</h3><p>ε denotes the attack perturbation budget; ε<sub>DP</sub> denotes the differential privacy budget. FPR is the false-positive rate; TPR is the true-positive rate. MIA denotes membership inference attack. A dash means no privacy budget is reported. A matched false-positive rate means each model's decision threshold is set so that a fixed share of benign flows is flagged, which makes models comparable at one operating point. Numerical precision and uncertainty are retained from the results file.</p></div>
+        </div>
+        <div class="provenance"><span>Source: <code>experiments/results/paper_results.json</code></span><span>Build: <code>scripts/build_dashboard.py</code></span><span>Config: <code>@@HASH@@</code></span></div>
+      </section>
+      <footer><span>FAGI / Experimental evaluation</span><span>Configuration @@HASH@@</span></footer>
+      <div class="sr-only" role="status" aria-live="polite" id="action-status"></div>
+    </main>
+  </div>
+  <script>
+
+    (() => {
+      'use strict';
+      // The chart reads the displayed table, so the numerical source stays in one place.
+      const budgets = [0.02, 0.05, 0.1, 0.2, 0.5];
+      const styles = {
+        rf:         { label: 'Random Forest', color: '#a56150', dash: '3 3' },
+        knn:        { label: 'k-NN (k=8)', color: '#9c742e' },
+        mlp:        { label: 'MLP', color: '#78828c', dash: '2 4' },
+        mlp_at:     { label: 'MLP + PGD', color: '#608b9c', dash: '7 3' },
+        mlp_dp:     { label: 'MLP + PGD + DP-SGD', color: '#81834c', dash: '6 3 2 3' },
+        cnn:        { label: '1D-CNN', color: '#ab718a', dash: '2 3' },
+        gnn:        { label: 'GNN Baseline', color: '#756780' },
+        fagi_no_dp: { label: 'FAGI − DP-SGD', color: '#4c7d69', dash: '7 4' },
+        fagi:       { label: 'FAGI', color: '#24566b' }
+      };
+      const readTable = id => Object.fromEntries(Array.from(document.querySelectorAll(`#${id} tbody tr`), row => [row.dataset.model, Array.from(row.querySelectorAll('td'), cell => Number(cell.textContent.trim()))]));
+      const byBasis = { matched: readTable('budget-table-matched'), default: readTable('budget-table-default') };
+      const state = { basis: 'matched' };
+      const captions = {
+        matched: '<strong>Figure 1.</strong> Worst-case attack recall (%) with every model\'s decision threshold set to a @@FPR@@ false-positive rate on benign test flows. The horizontal axis is linear. Select model names to compare curves; hover over the plot to inspect values. Lines connect the reported budgets and do not represent additional experiments. Attacks are re-scored at the matched threshold, not re-optimized against it.',
+        default: '<strong>Figure 1.</strong> Worst-case attack recall (%) at each model\'s default threshold. These models flag different amounts of benign traffic (Table 1, FPR column), so differences between curves partly reflect the operating point. The horizontal axis is linear. Lines connect the reported budgets and do not represent additional experiments.'
+      };
+      const series = Object.keys(byBasis.matched).map(id => ({
+        id,
+        ...styles[id],
+        get values() { return byBasis[state.basis][id]; }
+      }));
+      const defaultModels = ['rf', 'knn', 'gnn', 'fagi_no_dp', 'fagi'];
+      const selected = new Set(defaultModels);
+      const legend = document.getElementById('chart-legend');
+      const chart = document.getElementById('budget-chart');
+      const tooltip = document.getElementById('chart-tooltip');
+      const status = document.getElementById('action-status');
+      const ns = 'http://www.w3.org/2000/svg';
+      const plot = { left: 54, right: 863, top: 33, bottom: 284 };
+      const x = value => plot.left + (value - 0.02) / 0.48 * (plot.right - plot.left);
+      const y = value => plot.bottom - value / 100 * (plot.bottom - plot.top);
+      let cursorIndex = 2;
+
+      function svgElement(tag, attrs = {}, text) {
+        const element = document.createElementNS(ns, tag);
+        Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, String(value)));
+        if (text !== undefined) element.textContent = text;
+        return element;
+      }
+
+      // Keep the primary method first in the legend, while plotting it last for visibility.
+      const legendOrder = ['fagi', 'fagi_no_dp', 'knn', 'gnn', 'rf', 'mlp', 'mlp_at', 'mlp_dp', 'cnn'];
+      legendOrder.forEach(id => {
+        const model = series.find(item => item.id === id);
+        const label = document.createElement('label');
+        label.className = 'legend-item';
+        label.style.setProperty('--series-color', model.color);
+        label.dataset.dashed = String(Boolean(model.dash));
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.name = 'chart-model';
+        input.value = id;
+        input.checked = selected.has(id);
+        const swatch = document.createElement('span');
+        swatch.className = 'legend-swatch';
+        swatch.setAttribute('aria-hidden', 'true');
+        const name = document.createElement('span');
+        name.textContent = model.label;
+        label.append(input, swatch, name);
+        input.addEventListener('change', () => {
+          input.checked ? selected.add(id) : selected.delete(id);
+          drawChart();
+          status.textContent = `${selected.size} models displayed in the chart.`;
+        });
+        legend.append(label);
+      });
+
+      function drawChart() {
+        chart.querySelectorAll('g').forEach(group => group.remove());
+        hideTooltip();
+        const axes = svgElement('g', { 'aria-hidden': 'true' });
+        [0, 20, 40, 60, 80, 100].forEach(tick => {
+          axes.append(svgElement('line', { x1: plot.left, y1: y(tick), x2: plot.right, y2: y(tick), stroke: tick === 0 ? '#a9b7b5' : '#e5e9e5', 'stroke-width': 1 }));
+          axes.append(svgElement('text', { x: plot.left - 13, y: y(tick) + 3.5, fill: '#6a7875', 'font-size': 10, 'text-anchor': 'end' }, tick));
+        });
+        budgets.forEach(budget => {
+          axes.append(svgElement('line', { x1: x(budget), y1: plot.bottom, x2: x(budget), y2: plot.bottom + 5, stroke: '#a9b7b5' }));
+          axes.append(svgElement('text', { x: x(budget), y: plot.bottom + 21, fill: '#6a7875', 'font-size': 10, 'text-anchor': 'middle' }, String(budget)));
+        });
+        axes.append(svgElement('text', { x: plot.left, y: 16, fill: '#53616a', 'font-size': 10 }, 'Attack recall (%)'));
+        axes.append(svgElement('text', { x: (plot.left + plot.right) / 2, y: 329, fill: '#53616a', 'font-size': 10, 'text-anchor': 'middle' }, 'Perturbation budget, ε'));
+        chart.append(axes);
+        const lines = svgElement('g', { 'aria-hidden': 'true' });
+        series.filter(model => selected.has(model.id)).forEach(model => {
+          const points = model.values.map((value, index) => `${x(budgets[index])},${y(value)}`).join(' ');
+          const attrs = { points, fill: 'none', stroke: model.color, 'stroke-width': model.id === 'fagi' ? 3 : 1.8, 'stroke-linejoin': 'round' };
+          if (model.dash) attrs['stroke-dasharray'] = model.dash;
+          lines.append(svgElement('polyline', attrs));
+          model.values.forEach((value, index) => {
+            const marker = svgElement('circle', { cx: x(budgets[index]), cy: y(value), r: model.id === 'fagi' ? 3.5 : 2.6, fill: model.id === 'fagi' ? model.color : '#fff', stroke: model.color, 'stroke-width': 1.5 });
+            marker.append(svgElement('title', {}, `${model.label}: ${value.toFixed(1)}% at ε = ${budgets[index]}`));
+            lines.append(marker);
+          });
+        });
+        if (!selected.size) lines.append(svgElement('text', { x: 450, y: 158, fill: '#66756d', 'font-size': 13, 'text-anchor': 'middle' }, 'Select a model below to display its results.'));
+        chart.append(lines);
+        const guideGroup = svgElement('g', { 'aria-hidden': 'true' });
+        guideGroup.append(svgElement('line', { id: 'chart-guide', x1: x(budgets[cursorIndex]), x2: x(budgets[cursorIndex]), y1: plot.top, y2: plot.bottom, stroke: '#9bafaf', 'stroke-dasharray': '3 4', visibility: 'hidden' }));
+        chart.append(guideGroup);
+        document.getElementById('svg-description').textContent = `Worst-case attack recall from 0 to 100 percent at attack budgets 0.02, 0.05, 0.1, 0.2 and 0.5. Displayed models: ${series.filter(model => selected.has(model.id)).map(model => model.label).join(', ') || 'none'}. Exact values for every model appear in Tables 2 and 3. Threshold basis: ${state.basis === 'matched' ? 'matched @@FPR@@ false-positive rate' : 'default thresholds'}.`;
+      }
+
+      function showTooltip(index) {
+        if (!selected.size) return;
+        cursorIndex = index;
+        tooltip.replaceChildren();
+        const title = document.createElement('strong');
+        title.textContent = `Attack budget ε = ${budgets[index]}`;
+        tooltip.append(title);
+        legendOrder.filter(id => selected.has(id)).forEach(id => {
+          const model = series.find(item => item.id === id);
+          const row = document.createElement('span');
+          row.className = 'tooltip-row';
+          row.style.setProperty('--series-color', model.color);
+          const swatch = document.createElement('i');
+          const label = document.createElement('span');
+          label.textContent = model.label;
+          const value = document.createElement('b');
+          value.textContent = `${model.values[index].toFixed(1)}%`;
+          row.append(swatch, label, value);
+          tooltip.append(row);
+        });
+        const guide = document.getElementById('chart-guide');
+        guide.setAttribute('x1', x(budgets[index]));
+        guide.setAttribute('x2', x(budgets[index]));
+        guide.setAttribute('visibility', 'visible');
+        tooltip.hidden = false;
+      }
+      function hideTooltip() {
+        tooltip.hidden = true;
+        document.getElementById('chart-guide')?.setAttribute('visibility', 'hidden');
+      }
+      chart.addEventListener('pointermove', event => {
+        const point = chart.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
+        const matrix = chart.getScreenCTM();
+        if (!matrix) return;
+        const local = point.matrixTransform(matrix.inverse());
+        if (local.y < plot.top || local.y > plot.bottom || local.x < plot.left - 10 || local.x > plot.right + 10) return hideTooltip();
+        const nearest = budgets.reduce((best, budget, index) => Math.abs(x(budget) - local.x) < Math.abs(x(budgets[best]) - local.x) ? index : best, 0);
+        showTooltip(nearest);
+      });
+      chart.addEventListener('pointerleave', hideTooltip);
+      chart.addEventListener('focus', () => showTooltip(cursorIndex));
+      chart.addEventListener('blur', hideTooltip);
+      chart.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Escape'].includes(event.key)) return;
+        event.preventDefault();
+        if (event.key === 'Escape') return hideTooltip();
+        const next = event.key === 'Home' ? 0 : event.key === 'End' ? budgets.length - 1 : Math.max(0, Math.min(budgets.length - 1, cursorIndex + (event.key === 'ArrowRight' ? 1 : -1)));
+        showTooltip(next);
+        status.textContent = `Attack budget ${budgets[next]} (${state.basis === 'matched' ? 'matched threshold' : 'default threshold'}). ${series.filter(model => selected.has(model.id)).map(model => `${model.label}: ${model.values[next].toFixed(1)} percent`).join('; ')}.`;
+      });
+      function selectModels(ids) {
+        selected.clear();
+        ids.forEach(id => selected.add(id));
+        legend.querySelectorAll('input').forEach(input => { input.checked = selected.has(input.value); });
+        drawChart();
+        status.textContent = `${selected.size} models displayed in the chart.`;
+      }
+      function setBasis(basis) {
+        state.basis = basis;
+        ['matched', 'default'].forEach(name => document.getElementById(`basis-${name}`).setAttribute('aria-pressed', String(name === basis)));
+        document.getElementById('chart-caption').innerHTML = captions[basis];
+        drawChart();
+        status.textContent = basis === 'matched' ? 'Showing recall at a matched @@FPR@@ false-positive rate.' : 'Showing recall at each model default threshold.';
+      }
+      document.getElementById('basis-matched').addEventListener('click', () => setBasis('matched'));
+      document.getElementById('basis-default').addEventListener('click', () => setBasis('default'));
+      document.getElementById('show-all').addEventListener('click', () => selectModels(series.map(model => model.id)));
+      document.getElementById('reset-chart').addEventListener('click', () => selectModels(defaultModels));
+      document.getElementById('print-report').addEventListener('click', () => { hideTooltip(); window.print(); });
+
+      document.getElementById('export-csv').addEventListener('click', () => {
+        const rows = [['Experiment', 'Model or setting', 'Metric', 'Reported value']];
+        const clean = element => element.innerText.replace(/\s+/g, ' ').trim();
+        document.querySelectorAll('table[data-dataset]').forEach(table => {
+          const headings = Array.from(table.querySelectorAll('thead th'), clean);
+          table.querySelectorAll('tbody tr').forEach(row => {
+            const cells = Array.from(row.children, clean);
+            for (let i = 1; i < cells.length; i++) rows.push([table.dataset.dataset, cells[0], headings[i], cells[i]]);
+          });
+        });
+        const csv = rows.map(row => row.map(value => `"${value.replace(/"/g, '""')}"`).join(',')).join('\r\n');
+        const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'FAGI-results-@@HASH@@.csv';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        status.textContent = `Exported ${rows.length - 1} reported values from ${document.querySelectorAll('table[data-dataset]').length} tables.`;
+      });
+
+      const navLinks = Array.from(document.querySelectorAll('.section-nav a'));
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(entries => {
+          const candidates = entries.filter(entry => entry.isIntersecting);
+          if (!candidates.length) return;
+          const target = candidates.sort((a, b) => Math.abs(a.boundingClientRect.top) - Math.abs(b.boundingClientRect.top))[0].target;
+          navLinks.forEach(link => {
+            const active = link.hash === `#${target.id}`;
+            link.classList.toggle('active', active);
+            active ? link.setAttribute('aria-current', 'location') : link.removeAttribute('aria-current');
+          });
+        }, { rootMargin: '-5% 0px -65% 0px', threshold: 0 });
+        document.querySelectorAll('.results-section').forEach(section => observer.observe(section));
+      }
+      setBasis('matched');
+    })();
+  </script>
+</body>
+</html>
