@@ -1,0 +1,50 @@
+name: results-in-sync
+
+# Fails when the committed dashboard no longer matches paper_results.json, or when a
+# directional claim in the paper no longer holds against the results.
+on:
+  push:
+    paths:
+      - "experiments/results/**"
+      - "scripts/build_dashboard.py"
+      - "scripts/dashboard_template.html"
+      - "paper/**"
+      - "dashboard.html"
+      - ".github/workflows/results-in-sync.yml"
+  pull_request:
+    paths:
+      - "experiments/results/**"
+      - "scripts/build_dashboard.py"
+      - "scripts/dashboard_template.html"
+      - "paper/**"
+      - "dashboard.html"
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rebuild dashboard from paper_results.json
+        run: python scripts/build_dashboard.py
+      - name: Fail if dashboard.html is out of date
+        run: |
+          git diff --exit-code dashboard.html || {
+            echo "::error::dashboard.html is out of date. Run scripts/refresh.sh and commit the result."
+            exit 1
+          }
+
+  paper-claims:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Build the paper
+        working-directory: paper
+        run: |
+          npm install
+          node build_paper.js

@@ -78,6 +78,16 @@ This regenerates both synthetic datasets, runs every experiment, writes `experim
 | `experiments/exp2_api_native.py` | Synthetic API sessions: all attacks, lateral movement, SQL injection; payload-feature ablation |
 | `experiments/exp4_federated.py` | Held-out organization, FedAvg with and without client-side DP-SGD, ε-matched centralized DP, membership inference |
 
+### After rerunning an experiment
+
+`run_all.sh` rebuilds everything. If you rerun only some experiments, propagate their new results with:
+
+```bash
+bash scripts/refresh.sh
+```
+
+This merges the results into `paper_results.json`, regenerates the figures, rebuilds `dashboard.html` and rebuilds the paper (which stops and names any claim a new result no longer supports). It does not rerun experiments. Commit the regenerated files afterwards. The GitHub workflow `results-in-sync` fails if the committed `dashboard.html` does not match `paper_results.json`, or if the paper's claims no longer hold.
+
 ### Building the paper
 
 `run_all.sh` stops at `paper_results.json`, the figures and the dashboard. The paper is built separately from those files:

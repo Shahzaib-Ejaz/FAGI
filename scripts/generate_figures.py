@@ -38,7 +38,7 @@ def pct(x):
 def save(fig, out, name, dpi):
     path = os.path.join(out, name)
     fig.savefig(path, dpi=dpi)
-    fig.savefig(os.path.splitext(path)[0] + ".pdf")
+    fig.savefig(os.path.splitext(path)[0] + ".pdf", metadata={"CreationDate": None, "ModDate": None})  # no timestamps, so reruns give identical files
     plt.close(fig)
     print("wrote", os.path.relpath(path, ROOT))
 
