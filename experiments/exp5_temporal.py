@@ -9,7 +9,7 @@ import numpy as np
 from cicids_folds import CONFIG, CICIDSFolds
 from cicids_stats import ms, wilson
 from common import env_info, metrics, save_json
-from strong_attacks import worst_detected
+from robust_checks import worst_detected
 
 MODELS = [("Random Forest", "rf"), ("k-NN vote (k=8)", "knn"), ("MLP", "mlp"), ("MLP + PGD training", "mlp_at"),
           ("MLP + PGD + DP-SGD, all data private", "mlp_dp"), ("GNN Baseline", "gnn"), ("FAGI - DP-SGD", "fagi_no_dp"),

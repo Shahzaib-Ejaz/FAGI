@@ -10,7 +10,7 @@ from cicids_folds import CONFIG, GRAPH_VARIANTS, CICIDSFolds
 from cicids_stats import ms, paired
 from common import env_info, metrics, save_json
 from mia import mia_report
-from strong_attacks import worst_detected
+from robust_checks import worst_detected
 from synthetic_common import SYN_CONFIG, SYN_VARIANTS, SyntheticData, load_sessions
 
 CICIDS_ROWS = [("FAGI (full)", "fagi"), ("FAGI - GNNGuard", "fagi_no_guard"), ("FAGI - PGD", "fagi_no_pgd"),

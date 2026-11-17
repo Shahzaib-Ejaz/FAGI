@@ -7,9 +7,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 
 from cicids_folds import CONFIG, CICIDSFolds
-from cicids_stats import ms, paired, wilson
+from cicids_stats import ms, paired_folds, wilson
 from common import env_info, mcnemar, metrics, save_json
-from strong_attacks import SUITE, worst_detected
+from robust_checks import worst_detected
+from strong_attacks import SUITE
 
 MODELS = [
     ("Random Forest", "rf"),
@@ -30,13 +31,7 @@ def fold_means(vals, n_folds, n_seeds):
 
 
 def compare(per, a, b, field, n_folds, n_seeds):
-    if a in DETERMINISTIC or b in DETERMINISTIC:
-        out = paired(fold_means(per[a][field], n_folds, n_seeds), fold_means(per[b][field], n_folds, n_seeds))
-        out["unit"] = "fold (seeds averaged)"
-        return out
-    out = paired(per[a][field], per[b][field])
-    out["unit"] = "fold-seed pair"
-    return out
+    return paired_folds(per[a][field], per[b][field], n_folds)
 
 
 def main():

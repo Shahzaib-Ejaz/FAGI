@@ -21,8 +21,10 @@ import torch
 import torch.nn.functional as F
 
 from cicids_folds import CONFIG, FLAT_VARIANTS, GRAPH_VARIANTS, TRANSFER_SOURCES, CICIDSFolds, as_graph, inverse_flow
-from cicids_stats import ms, paired
-from common import T, env_info, save_json
+from cicids_stats import ms, paired_folds
+from common import env_info, save_json
+import strong_attacks as sa
+from strong_attacks import scorer  # noqa: F401  (deployed-path scorer, re-exported)
 
 FPR_TARGET = 0.01
 FPR_GRID = [0.005, 0.01, 0.02]
@@ -36,61 +38,59 @@ RESTART_MODELS = ["gnn", "fagi_no_dp", "fagi"]
 RESTARTS = [1, 2, 5]
 
 
-@torch.no_grad()
-def torch_scores(model, X, A, batch=2048):
-    model.eval()
-    Xt, At = T(X), T(A)
-    return torch.cat([F.softmax(model(Xt[i:i + batch], At[i:i + batch]), 1)[:, 1]
-                      for i in range(0, len(Xt), batch)]).numpy()
+def rescored(full):
+    """Lowest score over the stored attacks that the earlier matched-FPR analysis re-scored."""
+    return np.min(np.stack([full[k] for k in sa.OLD_FAMILIES if k in full]), axis=0)
 
 
-def scorer(folds, name, model, d):
-    """Malicious score in [0, 1]; score > 0.5 reproduces each model's deployed prediction."""
-    if name == "knn":
-        def knn_score(Z, self_index=None):
-            nbr = d["eb"].neighbours(Z, self_index)
-            votes = d["yr"][nbr].mean(axis=1)
-            return votes + 1e-6 * (d["yr"][nbr[:, 0]] - 0.5)
-        return knn_score
-    if name == "rf":
-        return lambda Z, self_index=None: model.predict_proba(inverse_flow(d["pp"], Z))[:, 1]
-    if name in FLAT_VARIANTS:
-        return lambda Z, self_index=None: torch_scores(model, *as_graph(Z))
-    return lambda Z, self_index=None: torch_scores(model, *d["eb"].build(Z, self_index=self_index)[:2])
+def worst_detected(folds, name, f, s, eps_list=None):
+    """Per-flow detection at the default threshold: the stored attacks and the full suite must all fail."""
+    old = folds.worst_detected(name, f, s)
+    return {e: old[e] & (sa.suite(folds, name, f, s, e)["final"] > 0.5) for e in (eps_list or sa.EPS)}
+
+
+FAMILIES = ("neighborhood", "score_attack", "transfer_strong", "random_search")
 
 
 def scores_for(folds, m, f, s_, eps_list):
     """Benign test and pool scores, and per-flow lowest attacked scores (full suite and stored attacks only)."""
-    import strong_attacks as sa
     base = sa.base_scores(folds, m, f, s_)
-    out = {"benign_test": base["benign_test"], "benign_pool": base["benign_pool"]}
+    out = {"benign_test": base["benign_test"], "benign_pool": base["benign_pool"], "discrete": m in ("knn", "rf"),
+           "floor": sa.floor_of(m)}
     for e in eps_list:
         full = sa.suite(folds, m, f, s_, e)
         out[f"worst_{e}"] = full["final"]
-        out[f"rescored_{e}"] = sa.rescored(full)
-        for k_ in ("score_attack", "transfer_strong", "random_search"):
+        out[f"rescored_{e}"] = rescored(full)
+        if m == "rf":
+            out[f"rs_curve_{e}"] = full["random_search_curve"]
+        for k_ in FAMILIES:
             if k_ in full:
                 out[f"{k_}_{e}"] = full[k_]
     return out
 
 
-def jitter(x, rng):
-    """Break ties at random so discrete scorers (k-NN votes, forest probabilities) reach the target FPR."""
-    return x + rng.uniform(0, 1e-7, size=len(x))
+def jitter(x, rng, scale=1e-7):
+    """Break ties at random so discrete scorers (k-NN votes, forest probabilities) reach the target FPR.
+
+    Neural scores are float64 and essentially tie-free; they get a jitter far below their spacing."""
+    return x + rng.uniform(0, scale, size=len(x))
 
 
 def evaluate(sc, rng, eps_list):
-    import strong_attacks as sa
-    bt, bp = jitter(sc["benign_test"], rng), jitter(sc["benign_pool"], rng)
-    worst = {e: jitter(sc[f"worst_{e}"], rng) for e in eps_list}
-    old = {e: jitter(sc[f"rescored_{e}"], rng) for e in eps_list}
+    js = 1e-7 if sc["discrete"] else 1e-15
+    bt, bp = jitter(sc["benign_test"], rng, js), jitter(sc["benign_pool"], rng, js)
+    worst = {e: jitter(sc[f"worst_{e}"], rng, js) for e in eps_list}
+    old = {e: jitter(sc[f"rescored_{e}"], rng, js) for e in eps_list}
     row = {"fpr_default": float(np.mean(sc["benign_test"] > 0.5))}
     for e in eps_list:
         row[f"default_{e}"] = float(np.mean(sc[f"worst_{e}"] > 0.5))
         row[f"rescored_default_{e}"] = float(np.mean(sc[f"rescored_{e}"] > 0.5))
-        for k_ in ("score_attack", "transfer_strong", "random_search"):
+        for k_ in FAMILIES:
             if f"{k_}_{e}" in sc:
                 row[f"{k_}_default_{e}"] = float(np.mean(sc[f"{k_}_{e}"] > 0.5))
+        if f"rs_curve_{e}" in sc:
+            for q, v in zip(sa.SUITE["rs_checkpoints"], sc[f"rs_curve_{e}"]):
+                row[f"rs_curve_{q}_{e}"] = float(v)
     lowest = 1.0
     for fpr in FPR_GRID:
         thr = float(np.quantile(bt, 1 - fpr))
@@ -108,7 +108,7 @@ def evaluate(sc, rng, eps_list):
     for e in eps_list:
         row[f"pool_{e}"] = float(np.mean(worst[e] > thr))
     # The attacks stop lowering a flow's score once it is under score_floor, so every threshold must sit above it.
-    row["threshold_above_score_floor"] = float(lowest > sa.SUITE["score_floor"])
+    row["threshold_above_score_floor"] = float(lowest > sc["floor"])
     return row
 
 
@@ -135,16 +135,13 @@ def fixed_fpr(folds, models=MODELS, seeds=(0,), eps_list=EPS):
             summ[m][f"rescored_fixed_{e}"] = summ[m][f"rescored_fixed_{FPR_TARGET:g}_{e}"]
     tests = {}
 
-    def cmp(a, b, key):
-        if folds.n_splits * (1 if "knn" in (a, b) else ns) < 3:
-            d_ = np.asarray(out[a][key]) - np.asarray(out[b][key])
+    def cmp(a, b, key, key_b=None):
+        key_b = key_b or key
+        if folds.n_splits < 3:
+            d_ = np.asarray(out[a][key]) - np.asarray(out[b][key_b])
             return {"mean_diff": float(d_.mean()), "p": None, "n": int(len(d_)), "wins_a": int((d_ > 0).sum()),
-                    "wins_b": int((d_ < 0).sum()), "unit": "too few units for a test"}
-        if "knn" in (a, b):
-            r = paired(fm(out[a][key]), fm(out[b][key])); r["unit"] = "fold (seeds averaged)"
-        else:
-            r = paired(out[a][key], out[b][key]); r["unit"] = "fold-seed pair" if ns > 1 else "fold"
-        return r
+                    "wins_b": int((d_ < 0).sum()), "unit": "seed (one split; too few units for a test)"}
+        return paired_folds(out[a][key], out[b][key_b], folds.n_splits)
 
     if "fagi" in out:
         for o in ["gnn", "fagi_no_dp", "knn", "mlp_at", "mlp_dp"]:
@@ -152,6 +149,7 @@ def fixed_fpr(folds, models=MODELS, seeds=(0,), eps_list=EPS):
                 for e in TEST_EPS:
                     tests[f"fagi_vs_{o}_fixed_{e}"] = cmp("fagi", o, f"fixed_{FPR_TARGET:g}_{e}")
                     tests[f"fagi_vs_{o}_pool_{e}"] = cmp("fagi", o, f"pool_{e}")
+                    tests[f"fagi_vs_{o}_default_{e}"] = cmp("fagi", o, f"default_{e}")
                     for fpr in FPR_GRID:
                         tests[f"fagi_vs_{o}_fixed_{fpr:g}_{e}"] = cmp("fagi", o, f"fixed_{fpr:g}_{e}")
     for v in ["fagi_no_guard", "fagi_no_pgd"]:
@@ -159,10 +157,17 @@ def fixed_fpr(folds, models=MODELS, seeds=(0,), eps_list=EPS):
             for e in TEST_EPS:
                 tests[f"fagi_vs_{v}_fixed_{e}"] = cmp("fagi", v, f"fixed_{FPR_TARGET:g}_{e}")
                 tests[f"fagi_vs_{v}_pool_{e}"] = cmp("fagi", v, f"pool_{e}")
-    if "fagi_no_dp" in out and "gnn" in out:
+    for x, y in [("fagi_no_dp", "gnn"), ("fagi_no_dp", "knn"), ("knn", "gnn")]:
+        if x in out and y in out:
+            for e in TEST_EPS:
+                tests[f"{x}_vs_{y}_fixed_{e}"] = cmp(x, y, f"fixed_{FPR_TARGET:g}_{e}")
+                tests[f"{x}_vs_{y}_pool_{e}"] = cmp(x, y, f"pool_{e}")
+                tests[f"{x}_vs_{y}_default_{e}"] = cmp(x, y, f"default_{e}")
+                for fpr in FPR_GRID:
+                    tests[f"{x}_vs_{y}_fixed_{fpr:g}_{e}"] = cmp(x, y, f"fixed_{fpr:g}_{e}")
+    for m in out:
         for e in TEST_EPS:
-            tests[f"fagi_no_dp_vs_gnn_fixed_{e}"] = cmp("fagi_no_dp", "gnn", f"fixed_{FPR_TARGET:g}_{e}")
-            tests[f"fagi_no_dp_vs_gnn_pool_{e}"] = cmp("fagi_no_dp", "gnn", f"pool_{e}")
+            tests[f"{m}_full_vs_stored_fixed_{e}"] = cmp(m, m, f"fixed_{FPR_TARGET:g}_{e}", f"rescored_fixed_{FPR_TARGET:g}_{e}")
     return {"fpr_target": FPR_TARGET, "fpr_grid": FPR_GRID, "seeds": list(seeds), "eps": list(eps_list), "models": summ, "tests": tests,
             "calibration": "threshold at the (1 - FPR) quantile of benign test scores (oracle, same for every model), "
                            "or of benign reference-pool scores with each flow excluded from its own neighborhood (pool_*); "
@@ -204,7 +209,6 @@ def main():
     else:
         print("[2] adaptive PGD restart curve at eps_adv = 0.5 (seed 0)")
         b = restart_curve(folds)
-    import strong_attacks as sa
     save_json({"config_hash": folds.hash, "env": env_info(), "attack_suite": sa.SUITE, "fixed_fpr_seed0": a, "fixed_fpr": a3, "fixed_fpr_temporal": at,
                "restart_curve": b},
               args.output)

@@ -7,9 +7,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 
 from cicids_folds import CONFIG, CICIDSFolds
-from cicids_stats import ms, paired
+from cicids_stats import ms, paired, paired_folds
 from common import env_info, predict, save_json
-from strong_attacks import worst_detected
+from robust_checks import worst_detected
 from synthetic_common import SYN_CONFIG, SyntheticData, inject_edges, load_sessions
 
 SWEEP_MODELS = ["rf", "knn", "mlp", "mlp_at", "mlp_dp", "cnn", "gnn", "fagi_no_dp", "fagi"]
@@ -55,13 +55,7 @@ def cicids_part(data_path):
         return ms(fm(v, nf, len(seeds))) if m in DETERMINISTIC else ms(v)
 
     def cmp(a, b, e):
-        if a in DETERMINISTIC or b in DETERMINISTIC:
-            r = paired(fm(worst[a][e], nf, len(seeds)), fm(worst[b][e], nf, len(seeds)))
-            r["unit"] = "fold (seeds averaged)"
-        else:
-            r = paired(worst[a][e], worst[b][e])
-            r["unit"] = "fold-seed pair"
-        return r
+        return paired_folds(worst[a][e], worst[b][e], nf)
 
     return {
         "eps_sweep_worst_recall": {m: {e: stat(m, v) for e, v in d.items()} for m, d in worst.items()},

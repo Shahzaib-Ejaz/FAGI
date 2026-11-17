@@ -35,7 +35,7 @@ def _data(n=300, m=40, d=12, seed=0):
 
 def test_retriever_matches_sklearn_neighbours():
     pool, Q = _data()
-    r = sa.Retriever(pool, 8, 3)
+    r = sa.Retriever(pool, np.arange(len(pool)) % 2, 8, 3)
     idx, d2 = r.neighbours(torch.as_tensor(Q))
     dist, ref = NearestNeighbors(n_neighbors=8, algorithm="brute").fit(pool).kneighbors(Q)
     assert np.array_equal(idx.numpy(), ref)
@@ -46,7 +46,7 @@ def test_retriever_graph_matches_ego_graph_builder():
     pool, Q = _data()
     eb = EgoGraphBuilder(8, 3).fit(pool)
     G, A, nbr = eb.build(Q)
-    r = sa.Retriever(pool, 8, 3)
+    r = sa.Retriever(pool, np.arange(len(pool)) % 2, 8, 3)
     nodes, adj = r.graph(torch.as_tensor(Q), torch.as_tensor(nbr))
     assert np.allclose(nodes.numpy(), G)
     assert np.array_equal(adj.numpy(), A)
@@ -78,6 +78,19 @@ def test_random_search_never_raises_the_score_and_stays_in_budget():
     assert (best.s <= start + 1e-9).all() and (best.s < start - 1e-4).mean() > 0.9
     assert np.abs(best.z - Z0).max() <= eps + 1e-6
     assert np.allclose(best.s, tg.score(best.z), atol=1e-6)
+
+
+def test_by_class_returns_nearest_per_label_and_overall():
+    pool, Q = _data()
+    y = np.arange(len(pool)) % 2
+    r = sa.Retriever(pool, y, 8, 3)
+    ib, im, ik = r.by_class(torch.as_tensor(Q), 5, 4)
+    for lab, got, k in ((0, ib, 5), (1, im, 4)):
+        sub = np.flatnonzero(y == lab)
+        _, ref = NearestNeighbors(n_neighbors=k, algorithm="brute").fit(pool[sub]).kneighbors(Q)
+        assert np.array_equal(got.numpy(), sub[ref])
+    _, ref = NearestNeighbors(n_neighbors=8, algorithm="brute").fit(pool).kneighbors(Q)
+    assert np.array_equal(ik.numpy(), ref)
 
 
 def test_best_keeps_the_lowest_score_per_row():
