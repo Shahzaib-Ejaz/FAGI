@@ -17,7 +17,11 @@ FILES = {
     "exp4": "exp4.json", "exp4_hard": "exp4_hard.json",
     "ablation": "ablation.json", "ablation_hard": "ablation_hard.json", "mia_canary": "mia_canary.json",
     "exp5_temporal": "exp5_temporal.json", "robust_checks": "robust_checks.json",
+    "extra_controls": "extra_controls.json", "attack_checks": "attack_checks.json",
 }
+
+
+OPTIONAL = {"extra_controls", "attack_checks"}
 
 
 def load(name):
@@ -32,6 +36,9 @@ def main():
     out = {"provenance": {"dataset_archive": DATASET_ARCHIVE,
                           "generated_by": "scripts/run_all.sh -> scripts/build_results.py"}}
     for key, fname in FILES.items():
+        if key in OPTIONAL and not os.path.exists(os.path.join(RES, fname)):
+            print(f"note: {fname} not found; the paper leaves out the sections that use it")
+            continue
         d = load(fname)
         d.pop("runs", None)
         out[key] = d
