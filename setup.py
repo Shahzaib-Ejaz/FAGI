@@ -4,7 +4,7 @@ setup(
     name="fagi",
     version="1.0.0",
     author="Shahzaib Ejaz",
-    author_email="sejaz@student.na.edu",
+    author_email="sejaz@na.edu",
     description="Federated Adversarial Graph Intelligence for Cloud API Threat Detection",
     long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
