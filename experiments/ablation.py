@@ -10,6 +10,7 @@ from cicids_folds import CONFIG, GRAPH_VARIANTS, CICIDSFolds
 from cicids_stats import ms, paired
 from common import env_info, metrics, save_json
 from mia import mia_report
+from strong_attacks import worst_detected
 from synthetic_common import SYN_CONFIG, SYN_VARIANTS, SyntheticData, load_sessions
 
 CICIDS_ROWS = [("FAGI (full)", "fagi"), ("FAGI - GNNGuard", "fagi_no_guard"), ("FAGI - PGD", "fagi_no_pgd"),
@@ -30,7 +31,7 @@ def cicids(data_path):
         for s in [0]:
             for _, k in CICIDS_ROWS:
                 b = folds.result(k, f, s)
-                w = folds.worst_detected(k, f, s)
+                w = worst_detected(folds, k, f, s, ["0.1", "0.5"])
                 m = metrics(d["yte"], b["pred_clean"])
                 r = res[k]
                 r["clean"].append(m["accuracy"]); r["fpr"].append(m["fpr"]); r["eps"].append(b["info"].get("epsilon"))
@@ -38,7 +39,7 @@ def cicids(data_path):
                 r["w05"].append(float(w["0.5"].mean()))
         for k in sig:
             b = folds.result(k, f, 0)
-            w = folds.worst_detected(k, f, 0)
+            w = worst_detected(folds, k, f, 0, ["0.1", "0.5"])
             sig[k]["clean"].append(float(np.mean(b["pred_clean"] == d["yte"])))
             sig[k]["w01"].append(float(w["0.1"].mean()))
             sig[k]["w05"].append(float(w["0.5"].mean()))

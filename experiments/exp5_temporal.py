@@ -9,6 +9,7 @@ import numpy as np
 from cicids_folds import CONFIG, CICIDSFolds
 from cicids_stats import ms, wilson
 from common import env_info, metrics, save_json
+from strong_attacks import worst_detected
 
 MODELS = [("Random Forest", "rf"), ("k-NN vote (k=8)", "knn"), ("MLP", "mlp"), ("MLP + PGD training", "mlp_at"),
           ("MLP + PGD + DP-SGD, all data private", "mlp_dp"), ("GNN Baseline", "gnn"), ("FAGI - DP-SGD", "fagi_no_dp"),
@@ -34,7 +35,7 @@ def main():
         pred0 = None
         for s in CONFIG["seeds"]:
             b = folds.result(key, 0, s)
-            w = folds.worst_detected(key, 0, s)
+            w = worst_detected(folds, key, 0, s, ["0.1", "0.5"])
             m = metrics(d["yte"], b["pred_clean"])
             acc.append(m["accuracy"]); fpr.append(m["fpr"]); dr.append(m["detection_rate"])
             w01.append(float(w["0.1"].mean())); w05.append(float(w["0.5"].mean())); eps.append(b["info"].get("epsilon"))

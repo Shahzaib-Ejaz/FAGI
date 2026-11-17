@@ -1,11 +1,13 @@
 const fs = require("fs");
 const path = require("path");
-const L = require("./lib");
+const FORMAT = process.env.FAGI_FORMAT || "docx";
+const ANON = !!process.env.FAGI_ANON;
+const L = require(FORMAT === "tex" ? "./lib_tex" : "./lib");
 const REFS = require("./refs");
 
 const REPO = process.env.FAGI_REPO || path.resolve(__dirname, "..");
 const R = JSON.parse(fs.readFileSync(path.join(REPO, "experiments/results/paper_results.json"), "utf8"));
-const OUT = process.argv[2] || path.join(__dirname, "out", "FAGI.docx");
+const OUT = process.argv[2] || path.join(__dirname, "out", FORMAT === "tex" ? "FAGI.tex" : "FAGI.docx");
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 
 const pct = (x, d = 1) => (100 * x).toFixed(d);
@@ -133,31 +135,22 @@ function cite(text) {
   return text.replace(/(?<![_^])\{([a-z0-9_,]+)\}/g, (_, keys) => keys.split(",").map((key) => {
     if (!REFS[key]) throw new Error("unknown ref " + key);
     if (!order.includes(key)) order.push(key);
-    return `[${order.indexOf(key) + 1}]`;
-  }).join(""));
+    return FORMAT === "tex" ? `\u0001${key}\u0002` : `[${order.indexOf(key) + 1}]`;
+  }).join("")).replace(/\u0002\u0001/g, ",");
 }
 const P = (t, o) => L.body(cite(t), o);
 const k = [];
 
 const TITLE = "FAGI: Measuring the Costs of Adversarial Training, Edge Filtering, and Differential Privacy in Graph-Based Threat Detection";
-const title = [
-  new L.Paragraph({ alignment: L.AlignmentType.CENTER, spacing: { after: 160 }, children: [new L.TextRun({ text: TITLE, font: L.FONT, size: 44 })] }),
-  new L.Paragraph({ alignment: L.AlignmentType.CENTER, children: [new L.TextRun({ text: "Shahzaib Ejaz", font: L.FONT, size: 22 })] }),
-  new L.Paragraph({ alignment: L.AlignmentType.CENTER, children: [new L.TextRun({ text: "Department of Computer Science, North American University, Houston, TX, USA", font: L.FONT, size: 18, italics: true })] }),
-  new L.Paragraph({ alignment: L.AlignmentType.CENTER, spacing: { after: 240 }, children: [new L.TextRun({ text: "sejaz@na.edu", font: L.FONT, size: 18, italics: true })] }),
-];
+const title = L.titleBlock({ title: TITLE, author: "Shahzaib Ejaz",
+  affiliation: "Department of Computer Science, North American University, Houston, TX, USA", email: "sejaz@na.edu" });
 
 const FED_TEXT = require("./fed_text")({ F0, FH, M, pct, fx, claim });
 const TEMP_TEXT = require("./temporal_text")({ TP, TPB, B, AB, M, pct, int, claim, w, FXT: R.robust_checks.fixed_fpr_temporal.models, FXCV: R.robust_checks.fixed_fpr.models });
 
 const abstract = `Learned detectors for network and API threats face two pressures that are usually studied apart: attackers who perturb their traffic to evade the model, and privacy rules that keep organizations from pooling logs. We present FAGI, which combines a GraphSAGE detector over k-nearest-neighbor flow neighborhoods, GNNGuard edge filtering, PGD adversarial training, and DP-SGD inside federated averaging, and we measure what each component buys and costs. On all eight days of CICIDS2017 (${int(ds.clean_rows)} flows after cleaning; a stratified sample of ${int(ds.sample_rows)} under 5-fold cross-validation with ${nSeeds} seeds), neighbors come from a reference pool kept apart from the private training set, so DP-SGD gives a valid per-flow guarantee (ε_{DP} = ${fx(eC)}, δ = 10^{-6}). Every model exceeds ${Math.floor(100 * Math.min(...E1.models.map((m) => M(m.clean))))}% clean accuracy and a random forest is best. We attack only malicious flows, in feature space without protocol constraints and through each model's own inference path, with one suite for every model: best-of-32 benign mimicry, transferred examples, and white-box or retrieval-aware adaptive PGD. A model that flags more benign traffic also catches more attacked flows, so we compare robustness with every model held to a ${fprTxt} false-positive rate. At ε_{adv} = 0.5, adversarial training lets a graph detector keep ${pct(mf("fagi_no_dp", "0.5"))}% of attacked flows detected, against ${pct(mf("gnn", "0.5"))}% for an undefended GNN and almost none for every flat model, PGD-trained ones included. FAGI, which adds DP-SGD, keeps ${pct(mf("fagi", "0.5"))}%, no better than the undefended GNN (it is ahead only at a 2% false-positive rate), and an untrained k-NN vote over the same pool keeps ${pct(mf("knn", "0.5"))}%. At its default threshold FAGI appears level with the k-NN vote (${pct(w("fagi", "0.5"))}%) only because it flags ${pct(M(B.fagi.fpr), 2)}% of benign flows. At that operating point DP gives back most of what adversarial training buys (less at 2%), and it costs ${pp(M(AB.fagi_no_dp.clean), M(AB.fagi.clean))} points of clean accuracy, concentrated on rare attacks; GNNGuard has no measurable effect. ${TEMP_TEXT.abstract} Loss-based membership inference finds nothing even against an overfit control, while a canary audit separates the non-private models from FAGI. ${FED_TEXT.abstract}`;
 
-k.push(new L.Paragraph({ alignment: L.AlignmentType.JUSTIFIED, spacing: { after: 80 }, children: [
-  new L.TextRun({ text: "Abstract", font: L.FONT, size: 18, bold: true, italics: true }), new L.TextRun({ text: "—", font: L.FONT, size: 18, bold: true }),
-  ...L.runs(abstract, { size: 18, bold: true })] }));
-k.push(new L.Paragraph({ alignment: L.AlignmentType.JUSTIFIED, spacing: { after: 120 }, children: [
-  new L.TextRun({ text: "Index Terms", font: L.FONT, size: 18, bold: true, italics: true }),
-  new L.TextRun({ text: "—adversarial machine learning, differential privacy, federated learning, graph neural networks, intrusion detection, API security.", font: L.FONT, size: 18, bold: true })] }));
+k.push(...L.abstract(abstract, "adversarial machine learning, differential privacy, federated learning, graph neural networks, intrusion detection, API security."));
 
 // ---------- I ----------
 k.push(L.section("I. Introduction"));
@@ -170,7 +163,7 @@ k.push(P(`The results do not crown a single design. Compared at a matched false-
 // ---------- II ----------
 k.push(L.section("II. Related Work"));
 k.push(L.subsection("A. API Security and Evaluation Practice"));
-k.push(P(`Ejaz catalogued cloud API management anti-patterns such as excessive trust delegation and missing schema validation {ejaz}, and supply-chain compromises add structural risk {ohm,ladisa}. Sommer and Paxson explained why detectors trained on one traffic distribution often fail on another {sommer}. Arp et al. list evaluation pitfalls in security ML, including data snooping and unrealistic splits {arp}. CICIDS2017 {cicids} is the most used benchmark of its kind, and it has documented labeling problems {engelen}.`));
+k.push(P(`Ejaz catalogued cloud API management anti-patterns such as excessive trust delegation and missing schema validation {ejaz}, and supply-chain compromises add structural risk {ohm,ladisa}. Sommer and Paxson explained why detectors trained on one traffic distribution often fail on another {sommer}. Arp et al. list evaluation pitfalls in security ML, including data snooping and sampling bias {arp}. CICIDS2017 {cicids} is the most used benchmark of its kind, and it has documented labeling problems {engelen}.`));
 k.push(L.subsection("B. Graph Neural Networks for Intrusion Detection"));
 k.push(P(`Graph neural networks learn from structure and attributes through message passing {sage}. E-GraphSAGE applies GraphSAGE to flow graphs for intrusion detection {egraphsage}, and graph learning has worked for related tasks such as security patch detection {graphspd}. Wang et al. re-evaluated graph NIDS and found that published results overstate what these models achieve under careful evaluation {wang25}. Neural detectors include autoencoders over flow features {kitsune} and CNNs over connection records rendered as images {li_cnn}. CNNs over raw bytes have also been used for malware {raff}.`));
 k.push(L.subsection("C. Adversarial Machine Learning in Security"));
@@ -336,11 +329,13 @@ k.push(P(`The next tests this design should face are problem-space attacks that 
 k.push(L.section("VIII. Conclusion"));
 k.push(P(`FAGI combines graph detection, adversarial training, edge filtering, and differentially private federated learning, and this paper measures each component instead of assuming it helps. On CICIDS2017, clean detection is easy for every model. Under a symmetric suite of adaptive attacks and a matched ${fprTxt} false-positive rate, adversarial training keeps the graph detector at ${pct(mf("fagi_no_dp", "0.5"))}% worst-case recall at ε_{adv} = 0.5 where an undefended GNN keeps ${pct(mf("gnn", "0.5"))}%, but with DP-SGD FAGI keeps ${pct(mf("fagi", "0.5"))}%. GNNGuard adds nothing, and an untrained k-NN vote (${pct(mf("knn", "0.5"))}%) does better than FAGI. Drawing neighbors from a separate reference pool makes DP-SGD's guarantee valid per record (ε_{DP} = ${fx(eC)}) and costs under half a point of clean accuracy on its own; DP itself costs more, and its cost falls on rare attacks. Code, data loaders, and the scripts that produce every number in this paper are public.`));
 
-k.push(new L.Paragraph({ children: [new L.TextRun({ text: "Acknowledgment", font: L.FONT, size: 20, smallCaps: true })], alignment: L.AlignmentType.CENTER, spacing: { before: 200, after: 100 } }));
-k.push(P(`The author thanks Dr. Ihsan Said (North American University) for guidance on research methodology. CICIDS2017 was provided by the Canadian Institute for Cybersecurity, University of New Brunswick. The author used an AI assistant (Claude, Anthropic) in developing experiment code, running analyses, and drafting and editing text; the author reviewed all code, results, and text and takes responsibility for the content. Code, loaders, generator, tests, and the scripts that regenerate every table and figure are at https://github.com/Shahzaib-Ejaz/FAGI.`));
+k.push(L.unnumbered("Acknowledgment"));
+k.push(P(ANON
+  ? `CICIDS2017 was provided by the Canadian Institute for Cybersecurity, University of New Brunswick. The author used an AI assistant for code and drafting and reviewed all content.`
+  : `The author thanks Dr. Ihsan Said (North American University) for guidance on research methodology. CICIDS2017 was provided by the Canadian Institute for Cybersecurity, University of New Brunswick. The author used an AI assistant for code and drafting and reviewed all content. Code, loaders, generator, tests, and the scripts that regenerate every table and figure are at https://github.com/Shahzaib-Ejaz/FAGI.`));
 
-k.push(new L.Paragraph({ children: [new L.TextRun({ text: "References", font: L.FONT, size: 20, smallCaps: true })], alignment: L.AlignmentType.CENTER, spacing: { before: 200, after: 100 } }));
-order.forEach((key, i) => k.push(L.reference(i + 1, REFS[key])));
+k.push(L.unnumbered("References"));
+order.forEach((key, i) => k.push(L.reference(i + 1, REFS[key], key)));
 const unused = Object.keys(REFS).filter((x) => !order.includes(x));
 if (unused.length) console.log("uncited references (omitted):", unused.join(", "));
 

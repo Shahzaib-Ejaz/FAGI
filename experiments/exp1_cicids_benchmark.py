@@ -9,6 +9,7 @@ import numpy as np
 from cicids_folds import CONFIG, CICIDSFolds
 from cicids_stats import ms, paired, wilson
 from common import env_info, mcnemar, metrics, save_json
+from strong_attacks import SUITE, worst_detected
 
 MODELS = [
     ("Random Forest", "rf"),
@@ -55,7 +56,7 @@ def main():
         for s in seeds:
             for _, key in MODELS:
                 b = folds.result(key, f, s)
-                w = folds.worst_detected(key, f, s)
+                w = worst_detected(folds, key, f, s, ["0.1", "0.5"])
                 m = metrics(d["yte"], b["pred_clean"])
                 p = per[key]
                 p["acc"].append(m["accuracy"]); p["fpr"].append(m["fpr"]); p["dr"].append(m["detection_rate"])
@@ -96,7 +97,7 @@ def main():
     tests["mcnemar_fagi_vs_gnn_clean_seed0"] = mcnemar(y, np.concatenate(pooled_pred["gnn"]),
                                                        np.concatenate(pooled_pred["fagi"]))
     d0 = folds.fold(0)
-    out = {"config": CONFIG, "config_hash": folds.hash, "env": env_info(),
+    out = {"config": CONFIG, "config_hash": folds.hash, "env": env_info(), "attack_suite": SUITE,
            "dataset": {k: v for k, v in folds.meta.items() if k != "features"},
            "n_features": len(folds.features), "features": folds.features,
            "split": {"private_train_per_fold": int(len(d0["priv"])), "reference_pool_per_fold": int(len(d0["pool"])),

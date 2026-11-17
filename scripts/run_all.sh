@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Regenerates every result, figure and paper_results.json from scratch.
-# Expected runtime on a 2-core CPU: about 9 hours (CICIDS2017 grids ~5.5 h, synthetic ~3.5 h).
+# Expected runtime on a 2-core CPU: about 19 hours (CICIDS2017 grids ~5.5 h, score-minimizing attack suite ~10 h,
+# synthetic ~3.5 h). The attack suite can be split over processes by fold (--folds), which is how it was run.
 # Interrupted runs resume: CICIDS2017 models are cached per (model, fold, seed) under
 # experiments/results/cache/, keyed by a hash of the config and the core source files.
 set -euo pipefail
@@ -16,6 +17,8 @@ H=data/synthetic/sessions_hard.json
 $PY experiments/cicids_compute.py --seeds 0 --extra 2>&1 | tee "$LOG/cicids_compute_s0.log"
 $PY experiments/cicids_compute.py --seeds 1 2 2>&1 | tee "$LOG/cicids_compute_s12.log"
 $PY experiments/cicids_compute.py --protocol temporal 2>&1 | tee "$LOG/cicids_compute_temporal.log"
+$PY experiments/strong_attacks.py --extra 2>&1 | tee "$LOG/strong_attacks_cv.log"
+$PY experiments/strong_attacks.py --protocol temporal 2>&1 | tee "$LOG/strong_attacks_temporal.log"
 $PY experiments/exp1_cicids_benchmark.py 2>&1 | tee "$LOG/exp1.log"
 $PY experiments/mia_canary.py 2>&1 | tee "$LOG/mia_canary.log"
 $PY experiments/exp5_temporal.py 2>&1 | tee "$LOG/exp5_temporal.log"

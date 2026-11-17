@@ -9,6 +9,7 @@ import numpy as np
 from cicids_folds import CONFIG, CICIDSFolds
 from cicids_stats import ms, paired
 from common import env_info, predict, save_json
+from strong_attacks import worst_detected
 from synthetic_common import SYN_CONFIG, SyntheticData, inject_edges, load_sessions
 
 SWEEP_MODELS = ["rf", "knn", "mlp", "mlp_at", "mlp_dp", "cnn", "gnn", "fagi_no_dp", "fagi"]
@@ -34,7 +35,7 @@ def cicids_part(data_path):
         for s in seeds:
             for m in SWEEP_MODELS:
                 b = folds.result(m, f, s)
-                w = folds.worst_detected(m, f, s)
+                w = worst_detected(folds, m, f, s)
                 tr = folds.transfer(m, f, s)
                 for e in eps_list:
                     worst[m][e].append(float(w[e].mean()))

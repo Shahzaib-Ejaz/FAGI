@@ -113,6 +113,25 @@ function reference(i, text) {
     alignment: AlignmentType.JUSTIFIED, spacing: { after: 30 } });
 }
 
+const titleBlock = ({ title, author, affiliation, email }) => [
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 160 }, children: [new TextRun({ text: title, font: FONT, size: 44 })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: author, font: FONT, size: 22 })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: affiliation, font: FONT, size: 18, italics: true })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 240 }, children: [new TextRun({ text: email, font: FONT, size: 18, italics: true })] }),
+];
+
+const abstract = (text, indexTerms) => [
+  new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 80 }, children: [
+    new TextRun({ text: "Abstract", font: FONT, size: 18, bold: true, italics: true }), new TextRun({ text: "—", font: FONT, size: 18, bold: true }),
+    ...runs(text, { size: 18, bold: true })] }),
+  new Paragraph({ alignment: AlignmentType.JUSTIFIED, spacing: { after: 120 }, children: [
+    new TextRun({ text: "Index Terms", font: FONT, size: 18, bold: true, italics: true }),
+    new TextRun({ text: `—${indexTerms}`, font: FONT, size: 18, bold: true })] }),
+];
+
+const unnumbered = (title) => new Paragraph({ children: [new TextRun({ text: title, font: FONT, size: 20, smallCaps: true })],
+  alignment: AlignmentType.CENTER, spacing: { before: 200, after: 100 } });
+
 function build(titleBlock, bodyChildren, outPath, runningHead) {
   const doc = new Document({
     creator: "Shahzaib Ejaz",
@@ -146,4 +165,4 @@ function build(titleBlock, bodyChildren, outPath, runningHead) {
 }
 
 module.exports = { FONT, COL_W, runs, body, section, subsection, caption, tableTitle, table, figure, algorithm,
-  spacer, reference, build, Paragraph, TextRun, AlignmentType };
+  spacer, reference, build, titleBlock, abstract, unnumbered, format: "docx" };

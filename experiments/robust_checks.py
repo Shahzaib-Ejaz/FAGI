@@ -1,11 +1,12 @@
-"""Round-3 robustness checks on seed 0 (5 folds), from cached models.
+"""Robustness checks on the cached CICIDS2017 models.
 
 1. Worst-case attack recall at a matched false-positive rate. Each model's decision threshold is moved so that
-   it flags FPR_TARGET of the benign test flows; attacked flows count as detected only if every attack leaves
-   their malicious score above that threshold. The attacks are re-scored, not re-optimized: mimicry (all 32
-   targets), the model's own stored gradient examples (adaptive PGD for graph models, PGD for flat ones), and
-   the two transfer sources. PGD followed by re-retrieval is not stored and is omitted, so these numbers are
-   an upper bound on the matched-FPR worst case.
+   it flags FPR_TARGET of the benign test flows; an attacked flow counts as detected only if the lowest
+   malicious score that any attack reached for it stays above that threshold. The scores come from
+   strong_attacks.py, which minimizes each model's score (so the attacks are optimized for every threshold at
+   once) and returns the deployed-path score of each flow's best example. rescored_* keys repeat the analysis
+   with the stored attacks only (mimicry, the model's stored gradient examples, the two stored transfer
+   sources), which stop at the default decision boundary and were merely re-scored at the new threshold.
 2. Restart curve for 20-step adaptive PGD (1, 2, 5 restarts) at eps_adv = 0.5 on the graph models.
 """
 import argparse
@@ -58,28 +59,18 @@ def scorer(folds, name, model, d):
     return lambda Z, self_index=None: torch_scores(model, *d["eb"].build(Z, self_index=self_index)[:2])
 
 
-def scores_for(folds, m, f, s_, d, idx, cache_dir):
-    """Benign test scores, benign pool scores (self excluded), and per-flow worst attacked scores; cached."""
-    path = os.path.join(cache_dir, f"scores-{folds.protocol}_{m}_f{f}_s{s_}_{folds.hash}.npz")
-    if os.path.exists(path):
-        z = np.load(path)
-        return {k: z[k] for k in z.files}
-    model = folds.load_model(m, f, s_)
-    sc = scorer(folds, m, model, d)
-    Zm = d["Zte"][d["mal"]]
-    pool_ben = np.flatnonzero(d["yr"] == 0)
-    out = {"benign_test": sc(d["Zte"][d["yte"] == 0]), "benign_pool": sc(d["Zr"][pool_ben], self_index=pool_ben)}
-    blob = folds.result(m, f, s_)
-    for e in EPS:
-        cand = [sc((Zm + np.clip(d["benign_r"][idx[:, j]] - Zm, -float(e), float(e))).astype(np.float32))
-                for j in range(idx.shape[1])]
-        if e in blob["adv_examples"]:
-            cand.append(sc(blob["adv_examples"][e]))
-        for src in TRANSFER_SOURCES:
-            if src != m:
-                cand.append(sc(folds.result(src, f, s_)["adv_examples"][e]))
-        out[f"worst_{e}"] = np.min(np.stack(cand), axis=0)
-    np.savez_compressed(path, **out)
+def scores_for(folds, m, f, s_, eps_list):
+    """Benign test and pool scores, and per-flow lowest attacked scores (full suite and stored attacks only)."""
+    import strong_attacks as sa
+    base = sa.base_scores(folds, m, f, s_)
+    out = {"benign_test": base["benign_test"], "benign_pool": base["benign_pool"]}
+    for e in eps_list:
+        full = sa.suite(folds, m, f, s_, e)
+        out[f"worst_{e}"] = full["final"]
+        out[f"rescored_{e}"] = sa.rescored(full)
+        for k_ in ("score_attack", "transfer_strong", "random_search"):
+            if k_ in full:
+                out[f"{k_}_{e}"] = full[k_]
     return out
 
 
@@ -88,39 +79,48 @@ def jitter(x, rng):
     return x + rng.uniform(0, 1e-7, size=len(x))
 
 
-def evaluate(sc, rng):
+def evaluate(sc, rng, eps_list):
+    import strong_attacks as sa
     bt, bp = jitter(sc["benign_test"], rng), jitter(sc["benign_pool"], rng)
-    worst = {e: jitter(sc[f"worst_{e}"], rng) for e in EPS}
+    worst = {e: jitter(sc[f"worst_{e}"], rng) for e in eps_list}
+    old = {e: jitter(sc[f"rescored_{e}"], rng) for e in eps_list}
     row = {"fpr_default": float(np.mean(sc["benign_test"] > 0.5))}
-    for e in EPS:
+    for e in eps_list:
         row[f"default_{e}"] = float(np.mean(sc[f"worst_{e}"] > 0.5))
+        row[f"rescored_default_{e}"] = float(np.mean(sc[f"rescored_{e}"] > 0.5))
+        for k_ in ("score_attack", "transfer_strong", "random_search"):
+            if f"{k_}_{e}" in sc:
+                row[f"{k_}_default_{e}"] = float(np.mean(sc[f"{k_}_{e}"] > 0.5))
+    lowest = 1.0
     for fpr in FPR_GRID:
         thr = float(np.quantile(bt, 1 - fpr))
+        lowest = min(lowest, thr)
         tag = f"{fpr:g}"
         row[f"realized_fpr_{tag}"] = float(np.mean(bt > thr))
         row[f"threshold_{tag}"] = thr
-        for e in EPS:
+        for e in eps_list:
             row[f"fixed_{tag}_{e}"] = float(np.mean(worst[e] > thr))
+            row[f"rescored_fixed_{tag}_{e}"] = float(np.mean(old[e] > thr))
     thr = float(np.quantile(bp, 1 - FPR_TARGET))
+    lowest = min(lowest, thr)
     row["pool_threshold"] = thr
     row["pool_realized_test_fpr"] = float(np.mean(bt > thr))
-    for e in EPS:
+    for e in eps_list:
         row[f"pool_{e}"] = float(np.mean(worst[e] > thr))
+    # The attacks stop lowering a flow's score once it is under score_floor, so every threshold must sit above it.
+    row["threshold_above_score_floor"] = float(lowest > sa.SUITE["score_floor"])
     return row
 
 
-def fixed_fpr(folds, models=MODELS, seeds=(0,)):
-    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "cache")
+def fixed_fpr(folds, models=MODELS, seeds=(0,), eps_list=EPS):
     out = {m: {} for m in models}
     for f, s_ in [(f, s_) for f in range(folds.n_splits) for s_ in seeds]:
-        d = folds.fold(f)
-        _, idx = d["benign_nn"].kneighbors(d["Zte"][d["mal"]])
         for m in models:
-            row = evaluate(scores_for(folds, m, f, s_, d, idx, cache_dir), np.random.RandomState(12000 + 100 * f + s_))
+            row = evaluate(scores_for(folds, m, f, s_, eps_list), np.random.RandomState(12000 + 100 * f + s_), eps_list)
             for k_, v_ in row.items():
                 out[m].setdefault(k_, []).append(v_)
             print(f"  [{folds.protocol}] fold {f} seed {s_} {m:<14} FPR@0.5={row['fpr_default']:.4f}  "
-                  + "  ".join(f"{e}: default {row[f'default_{e}']:.3f} 1% {row[f'fixed_0.01_{e}']:.3f} pool {row[f'pool_{e}']:.3f}"
+                  + "  ".join(f"{e}: default {row[f'default_{e}']:.3f} 1% {row[f'fixed_0.01_{e}']:.3f} (stored only {row[f'rescored_fixed_0.01_{e}']:.3f}) pool {row[f'pool_{e}']:.3f}"
                               for e in TEST_EPS), flush=True)
     ns = len(seeds)
 
@@ -129,8 +129,10 @@ def fixed_fpr(folds, models=MODELS, seeds=(0,)):
 
     summ = {m: {k: ms(fm(v) if m == "knn" else v) for k, v in x.items()} for m, x in out.items()}
     for m in summ:
-        for e in EPS:
+        assert min(summ[m]["threshold_above_score_floor"]["values"]) == 1.0, f"{m}: a threshold is below the attack score floor"
+        for e in eps_list:
             summ[m][f"fixed_{e}"] = summ[m][f"fixed_{FPR_TARGET:g}_{e}"]
+            summ[m][f"rescored_fixed_{e}"] = summ[m][f"rescored_fixed_{FPR_TARGET:g}_{e}"]
     tests = {}
 
     def cmp(a, b, key):
@@ -161,7 +163,7 @@ def fixed_fpr(folds, models=MODELS, seeds=(0,)):
         for e in TEST_EPS:
             tests[f"fagi_no_dp_vs_gnn_fixed_{e}"] = cmp("fagi_no_dp", "gnn", f"fixed_{FPR_TARGET:g}_{e}")
             tests[f"fagi_no_dp_vs_gnn_pool_{e}"] = cmp("fagi_no_dp", "gnn", f"pool_{e}")
-    return {"fpr_target": FPR_TARGET, "fpr_grid": FPR_GRID, "seeds": list(seeds), "models": summ, "tests": tests,
+    return {"fpr_target": FPR_TARGET, "fpr_grid": FPR_GRID, "seeds": list(seeds), "eps": list(eps_list), "models": summ, "tests": tests,
             "calibration": "threshold at the (1 - FPR) quantile of benign test scores (oracle, same for every model), "
                            "or of benign reference-pool scores with each flow excluded from its own neighborhood (pool_*); "
                            "ties broken at random"}
@@ -191,18 +193,19 @@ def main():
     args = ap.parse_args()
     folds = CICIDSFolds(args.data_path)
     print("[1] matched-FPR worst-case recall, seed 0, all variants")
-    a = fixed_fpr(folds)
+    a = fixed_fpr(folds, eps_list=TEST_EPS)
     print("[1b] matched-FPR worst-case recall, all seeds, main models")
     a3 = fixed_fpr(folds, MAIN_MODELS, CONFIG["seeds"])
     print("[1c] matched-FPR worst-case recall, temporal split")
-    at = fixed_fpr(CICIDSFolds(args.data_path, protocol="temporal"), TEMPORAL_MODELS, CONFIG["seeds"])
+    at = fixed_fpr(CICIDSFolds(args.data_path, protocol="temporal"), TEMPORAL_MODELS, CONFIG["seeds"], eps_list=TEST_EPS)
     if args.skip_restarts and os.path.exists(args.output):
         with open(args.output) as fh:
             b = json.load(fh)["restart_curve"]
     else:
         print("[2] adaptive PGD restart curve at eps_adv = 0.5 (seed 0)")
         b = restart_curve(folds)
-    save_json({"config_hash": folds.hash, "env": env_info(), "fixed_fpr_seed0": a, "fixed_fpr": a3, "fixed_fpr_temporal": at,
+    import strong_attacks as sa
+    save_json({"config_hash": folds.hash, "env": env_info(), "attack_suite": sa.SUITE, "fixed_fpr_seed0": a, "fixed_fpr": a3, "fixed_fpr_temporal": at,
                "restart_curve": b},
               args.output)
 

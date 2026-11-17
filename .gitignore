@@ -1,10 +1,14 @@
-__pycache__/
-*.pyc
 *.egg-info/
+*.pyc
 .pytest_cache/
+__pycache__/
 data/cicids2017/*.csv
 data/cicids2017/.cache/
 data/synthetic/sessions_final.json
-experiments/results/logs/
 data/synthetic/sessions_hard.json
 experiments/results/cache/
+experiments/results/logs/
+paper/node_modules/
+paper/out/
+paper/package-lock.json
+paper/tmlr-style/
