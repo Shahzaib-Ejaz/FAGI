@@ -5,10 +5,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import numpy as np
+import torch
 
 from cicids_folds import CONFIG, GRAPH_VARIANTS, CICIDSFolds
 from cicids_stats import ms, paired
-from common import env_info, metrics, save_json
+from common import T, env_info, metrics, save_json
 from mia import mia_report
 from robust_checks import worst_detected
 from synthetic_common import SYN_CONFIG, SYN_VARIANTS, SyntheticData, load_sessions
@@ -18,6 +19,18 @@ CICIDS_ROWS = [("FAGI (full)", "fagi"), ("FAGI - GNNGuard", "fagi_no_guard"), ("
 SYN_ROWS = [("FAGI (full)", "fagi"), ("FAGI - payload feature", "fagi_no_payload"), ("FAGI - GNNGuard", "fagi_no_guard"),
             ("FAGI - PGD", "fagi_no_pgd"), ("FAGI - DP-SGD", "fagi_no_dp"), ("GNN Baseline (no payload)", "gnn_nopayload")]
 MIA_MODELS = ["gnn_overfit", "gnn", "fagi_no_dp", "fagi"]
+
+
+@torch.no_grad()
+def loss64(model, X, A, y, batch=4096):
+    """Per-example cross-entropy in float64, computed from the logit margin."""
+    model.eval()
+    out = []
+    for i in range(0, len(X), batch):
+        lg = model(T(X[i:i + batch]), T(A[i:i + batch])).double()
+        sign = torch.as_tensor(2.0 * y[i:i + batch] - 1.0, dtype=torch.float64)
+        out.append(torch.nn.functional.softplus(-sign * (lg[:, 1] - lg[:, 0])))
+    return torch.cat(out).numpy()
 
 
 def cicids(data_path):
@@ -46,8 +59,16 @@ def cicids(data_path):
             sig[k]["eps"].append(b["info"].get("epsilon"))
         for k in MIA_MODELS:
             b = folds.result(k, f, 0)
-            mm = b["mia"]
+            mm = dict(b["mia"])
+            # The cached float32 cross-entropy is exactly 0 for a large share of confident flows, which ties the
+            # top of the ROC curve and forces TPR at low FPR to 0. Recompute the loss in float64 from the logit
+            # margin of the cached model; the stored values are checked against it.
+            model = folds.load_model(k, f, 0)
+            lm64, ln64 = loss64(model, d["Gp"], d["Ap"], d["yp"]), loss64(model, d["Gte"], d["Ate"], d["yte"])
+            assert np.allclose(lm64, mm["loss_members"], atol=1e-4) and np.allclose(ln64, mm["loss_nonmembers"], atol=1e-4)
+            mm["loss_members"], mm["loss_nonmembers"] = lm64, ln64
             rep = mia_report(mm["loss_members"], mm["loss_nonmembers"], mm["labels_members"], d["labels_te"], seed=f)
+            rep["tied_at_zero_float32_members"] = float(np.mean(b["mia"]["loss_members"] == 0))
             rep["median_loss_members"] = float(np.median(mm["loss_members"]))
             rep["median_loss_nonmembers"] = float(np.median(mm["loss_nonmembers"]))
             rep["mean_loss_members"] = float(np.mean(mm["loss_members"]))
