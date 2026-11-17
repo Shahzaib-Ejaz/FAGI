@@ -16,11 +16,11 @@ C_FAGI = "#2a78d6"
 INK = "#222222"
 GRID = "#e3e3e3"
 SERIES = {
-    "fagi": ("FAGI (DP-SGD)", "#2a78d6", "o", "-"),
-    "gnn": ("GNN baseline", "#eb6834", "s", "--"),
-    "fagi_no_dp": ("FAGI − DP-SGD", "#1baf7a", "^", ":"),
+    "fagi": ("FAGI", "#2a78d6", "o", "-"),
+    "gnn": ("GNN", "#eb6834", "s", "--"),
+    "fagi_no_dp": ("FAGI w/o DP", "#1baf7a", "^", ":"),
     "knn": ("k-NN vote", "#eda100", "D", "-."),
-    "mlp_at": ("MLP + PGD training", "#6250d6", "v", (0, (5, 1, 1, 1))),
+    "mlp_at": ("MLP + PGD", "#6250d6", "v", (0, (5, 1, 1, 1))),
 }
 
 plt.rcParams.update({
@@ -54,7 +54,7 @@ def fig_benchmark(r, out, dpi):
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
     b1 = ax.bar(x - w / 2, clean, w, color=C_BASE, label="Clean accuracy")
     b2 = ax.bar(x + w / 2, w01, w, color=C_FAGI, hatch="////", edgecolor="white", linewidth=0,
-                label="Attack recall, worst case, ε=0.1")
+                label="Attack recall, worst case, $\\epsilon_{adv}$=0.1")
     for bars, vals in ((b1, clean), (b2, w01)):
         for b, v in zip(bars, vals):
             ax.text(b.get_x() + b.get_width() / 2, v + 1.2, f"{v:.1f}", ha="center", va="bottom", fontsize=5.2,

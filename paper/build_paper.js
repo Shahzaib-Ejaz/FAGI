@@ -294,7 +294,7 @@ k.push(L.caption(`Fig. 2. Worst-case attack recall at a matched ${fprTxt} false-
 k.push(L.subsection("D. What Privacy Costs and Buys"));
 k.push(P(`Fig. 3 varies the noise multiplier. At σ = 1.1, FAGI's guarantee is ε_{DP} = ${fx(eC)}; σ = ${sigOrdered[sigOrdered.length - 1].sigma} gives ε_{DP} = ${fx(M(sigOrdered[sigOrdered.length - 1].epsilon))} at ${pct(sigC[sigC.length - 1], 2)}% clean accuracy, and σ = ${sigOrdered[0].sigma} gives ε_{DP} = ${fx(M(sigOrdered[0].epsilon))} at ${pct(sigC[0], 2)}%, against ${pct(M(noDP.clean), 2)}% without DP. At each model's default threshold, worst-case recall at ε_{adv} = 0.5 stays between ${pct(Math.min(...sigR))}% and ${pct(Math.max(...sigR))}% and is highest at the largest σ, but noisier models also flag more benign flows (${pct(M(FX0["fagi_sigma0.6"].fpr_default), 1)}% at σ = 0.6, ${pct(M(FX0["fagi_sigma4.0"].fpr_default), 1)}% at σ = 4). At a matched ${fprTxt} false-positive rate the trend reverses: recall is ${pct(mf0("fagi_sigma0.6", "0.5"))}% at σ = 0.6, ${pct(mf0("fagi", "0.5"))}% at σ = 1.1, ${pct(mf0("fagi_sigma2.0", "0.5"))}% at σ = 2, and ${pct(mf0("fagi_sigma4.0", "0.5"))}% at σ = 4, against ${pct(mf0("fagi_no_dp", "0.5"))}% without DP. Even at σ = 0.6, where ε_{DP} = ${fx(M(sigOrdered[0].epsilon))} is a weak guarantee, much of the loss is already present, which points to clipping or the training configuration as much as to noise; Section VI-C separates them.  The sweep uses seed 0 only; the comparison at σ = 1.1 is repeated over three seeds in Table III.`));
 k.push(L.figure(path.join(REPO, "figures/fig3_privacy_utility.png"), 3.1, 2.39));
-k.push(L.caption(`Fig. 3. Privacy-utility trade-off for FAGI on CICIDS2017 (seed 0, 5 folds). Attack recall is at the default threshold except for the lowest curve, which holds each σ to a ${fprTxt} false-positive rate. Gray horizontal lines: FAGI without DP.`));
+k.push(L.caption(`Fig. 3. Privacy-utility trade-off for FAGI on CICIDS2017 (seed 0, 5 folds). Attack recall is at the default threshold except for the lowest curve, which holds each σ to a ${fprTxt} false-positive rate. Dotted horizontal lines, in the color of each curve: FAGI without DP.`));
 const med = (v) => { const x = [...v].sort((p, q) => p - q); return x.length % 2 ? x[(x.length - 1) / 2] : (x[x.length / 2 - 1] + x[x.length / 2]) / 2; };
 const lossTxt = (v) => `${fx(M(v.mean_loss_members), 3)} and ${fx(M(v.mean_loss_nonmembers), 3)}`;
 k.push(P(`Measuring what DP buys is harder. A loss-threshold membership attack {yeom}, run through the deployed retrieval path, scores an AUC between ${fx(Math.min(...Object.values(MIA).map((v) => M(v.auc))), 3)} and ${fx(Math.max(...Object.values(MIA).map((v) => M(v.auc))), 3)} for every model, with and without DP, and its true-positive rate at a 1% false-positive rate (${pct(Math.min(...Object.values(MIA).map((v) => M(v.tpr_at_1pct_fpr))), 1)}–${pct(Math.max(...Object.values(MIA).map((v) => M(v.tpr_at_1pct_fpr))), 1)}%) is what guessing gives. The attack's losses are computed in double precision from the logit margin; in single precision many confidently classified flows tie at a loss of exactly zero, which would force this rate to zero. It also fails on a positive control, a GNN trained for ${cfg.overfit_epochs} epochs on ${int(cfg.overfit_n)} flows (AUC ${fx(M(MIA.gnn_overfit.auc), 3)}, best per-class AUC ${fx(M(MIA.gnn_overfit.max_per_class_auc), 3)}). The reason is visible in the losses: the median loss is ${fx(M(MIA.gnn.median_loss_members), 3)} for members and non-members of every model, and mean losses for members and non-members are ${lossTxt(MIA.gnn)} for the GNN, ${lossTxt(MIA.fagi)} for FAGI, and ${lossTxt(MIA.gnn_overfit)} for the control. Most flows of both kinds are fit almost perfectly, so this attack cannot separate them and its silence says nothing about DP.`));
@@ -334,9 +334,9 @@ k.push(P(TEMP_TEXT.body));
 k.push(L.section("VI. Ablation, Case Study, and Controls"));
 k.push(L.subsection("A. Ablation"));
 k.push(...L.tableTitle("VII", "Ablation (seed 0, 5 folds, %; Section VI-A)"));
-const abRows = [["fagi", "FAGI (full)"], ["fagi_no_guard", "− GNNGuard"], ["fagi_no_pgd", "− PGD training"], ["fagi_no_dp", "− DP-SGD"], ["gnn", "GNN baseline"]];
+const abRows = [["fagi", "FAGI (full)"], ["fagi_no_guard", "− GNNGuard"], ["fagi_no_pgd", "− PGD training"], ["fagi_no_dp", "− DP-SGD (FAGI w/o DP)"], ["gnn", "GNN baseline"]];
 const ab1 = { fagi: "fagi", fagi_no_guard: "fagi_no_guard", fagi_no_pgd: "fagi_no_pgd", fagi_no_dp: "fagi_no_dp", gnn: "gnn" };
-k.push(L.table(["Variant", "CICIDS clean", "ε=0.1", "ε=0.5", `ε=0.5, ${fprTxt} FPR`, "Hard clean", "Hard PGD"],
+k.push(L.table(["Variant", "CICIDS clean", "ε_{adv}=0.1", "ε_{adv}=0.5", `ε_{adv}=0.5, ${fprTxt} FPR`, "Hard clean", "Hard PGD"],
   abRows.map(([key, name]) => { const hk = key === "gnn" ? "gnn_nopayload" : key;
     return { bold: key === "fagi", cells: [name, pct(M(AB[key].clean), 2), pct(M(AB[key]["worst_recall_eps0.1"])), pct(M(AB[key]["worst_recall_eps0.5"])),
       pct(mf0(ab1[key], "0.5")), ABH[hk] ? pct(M(ABH[hk].clean)) : "—", ABH[hk] ? pct(M(ABH[hk].adv)) : "—"] }; }),
@@ -355,12 +355,12 @@ k.push(L.subsection("C. Controls for DP and for the Pool"));
 k.push(P(XC.dpPara));
 k.push(P(XC.poolPara));
 k.push(...L.tableTitle("VIII", "Controls for DP-SGD and for the reference pool (CICIDS2017, seed 0, %)"));
-k.push(L.table(XC.table.header, XC.table.rows));
+k.push(L.table(XC.table.header, XC.table.rows, [620, 1330, 700, 420, 540, 400, 545, 545]));
 k.push(L.caption(XC.table.note, false));
 k.push(L.subsection("D. Privacy Accounting"));
 k.push(P(`Table IX lists the parameters behind every reported ε_{DP}. A PRV accountant would give slightly smaller values; we report the RDP bound.`));
 k.push(...L.tableTitle("IX", "Privacy accounting for every private model"));
-k.push(L.table(XC.accounting.header, XC.accounting.rows));
+k.push(L.table(XC.accounting.header, XC.accounting.rows, [1560, 640, 600, 560, 600, 440, 500]));
 k.push(L.caption(XC.accounting.note, false));
 }
 k.push(L.section("VII. Discussion"));

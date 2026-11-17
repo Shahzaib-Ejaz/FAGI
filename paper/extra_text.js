@@ -86,15 +86,21 @@ module.exports = function ({ XC, M, pct, pp, fx, int, claim, cfg, nP, nR, eC, eM
 
   return {
     dpPara, poolPara, table, accounting,
-    abstract: poolBeats10
+    abstract: poolBeats10 && poolBeatsHalf
       ? "Models trained only on the public reference pool, which use no private record, match or beat FAGI even when the pool is a ninth the size of the private set. "
-      : "Models trained only on the public reference pool, which use no private record, match or beat FAGI when the pool is half the data but not when it is small. ",
-    discussion: poolBeats10
+      : poolBeatsHalf
+        ? "Models trained only on the public reference pool, which use no private record, match or beat FAGI when the pool is half the training data but not when it is small. "
+        : "Models trained only on the public reference pool, which use no private record, come close to FAGI but do not match it on every measure. ",
+    discussion: poolBeats10 && poolBeatsHalf
       ? "Models trained on the pool alone do as well, even with a small pool, so in this setting the private records add little that the public pool does not provide."
-      : "Models trained on the pool alone do as well when the pool is large, but not when it is small, which is where DP-SGD on private data pays.",
-    conclusion: poolBeats10
+      : poolBeatsHalf
+        ? "Models trained on the pool alone do as well when the pool is large, but not when it is small, which is where DP-SGD on private data pays."
+        : "Models trained on the pool alone come close but do not match FAGI on every measure, so the private records do add something.",
+    conclusion: poolBeats10 && poolBeatsHalf
       ? "but the pool itself is published unprotected, and in our setting models trained on the pool alone, with no private data, match or beat the private model even when the pool is small."
-      : "but the pool itself is published unprotected, and models trained on the pool alone match the private model when the pool is large; DP-SGD pays only when the pool is small.",
+      : poolBeatsHalf
+        ? "but the pool itself is published unprotected, and models trained on the pool alone match the private model when the pool is large; DP-SGD pays only when the pool is small."
+        : "but the pool itself is published unprotected, and models trained on the pool alone come close to the private model.",
     noiseMain,
   };
 };
