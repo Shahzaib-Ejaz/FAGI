@@ -128,10 +128,9 @@ def main():
                   f"model's own default threshold, so models flag different amounts of benign traffic (see FPR). The last recall column moves "
                   f"every model to a {fpr_txt} false-positive rate on benign test flows.")
     thr_lo = min(M(FX[k][f"threshold_{T}"]) for k in FX if k not in ("rf",))
-    t1_note = ("Matched-threshold recall re-scores the stored attacks at the new threshold; it does not re-optimize them, so it is an upper bound "
-               "for models whose matched threshold is above 0.5.")
-    if M(FX["rf"][f"threshold_{T}"]) < 0.5:
-        t1_note += f" The random forest's matched threshold is {M(FX['rf'][f'threshold_{T}']):.2f}, below 0.5, which may favor it."
+    t1_note = ("Every attack minimizes the model's malicious score and keeps the lowest score reached for each flow, so the same "
+               "attacked examples are optimized for any threshold. The random forest is attacked by score-based random search "
+               f"({rc['attack_suite']['rs_iters_rf']:,} queries per flow).")
 
     # ---------- Tables 2 and 3 ----------
     def sweep_rows(getter):

@@ -17,20 +17,21 @@ All results in the paper are in [`experiments/results/paper_results.json`](exper
 
 ## Main findings
 
-Worst-case recall on attacked malicious flows (CICIDS2017, attack budget ε_adv = 0.5, 5 folds × 3 seeds) with every model's threshold set to a 1% false-positive rate on benign test flows:
+Worst-case recall on attacked malicious flows (CICIDS2017, attack budget ε_adv = 0.5, 5 folds × 3 seeds) with every model's threshold set to a 1% false-positive rate on benign test flows. The attacks minimize each model's score: mimicry, transfer, a retrieval-aware neighborhood attack, white-box margin attacks, and score-based random search (`experiments/strong_attacks.py`).
 
 | Model | Recall |
 |---|---|
-| FAGI without DP | 36.3% |
-| k-NN vote over the reference pool | 33.9% |
-| FAGI (ε = 2.90) | 18.7% |
-| GNN, no defenses | 16.4% |
-| All MLP variants, random forest, 1D-CNN | below 1% |
+| FAGI without DP | 28.6% |
+| k-NN vote over the reference pool | 26.2% |
+| FAGI (ε = 2.90) | 14.1% |
+| GNN, no defenses | 11.8% |
+| All MLP variants, random forest, 1D-CNN | 0.0% |
 
 * Adversarial training is what keeps the graph detector working under attack. DP-SGD gives most of that back.
-* GNNGuard has no measurable effect, and a k-NN vote that needs no training beats FAGI.
+* GNNGuard has no measurable effect, and a k-NN vote that needs no training matches FAGI without DP and beats FAGI.
+* The random forest is the most accurate clean detector, but a query attack on its scores leaves 21.0% detected even at ε_adv = 0.1.
 * At each model's default threshold the ranking looks different, because the models flag very different amounts of benign traffic. Compare models at a matched false-positive rate.
-* On a temporal split (train on earlier traffic, test on later), no model keeps more than 4.6% at this budget.
+* On a file-order split (train on the first 70% of each day file, test on the rest), no model keeps more than 2.8% at this budget.
 
 ## Installation
 
@@ -66,7 +67,7 @@ DP noise is drawn from a seeded `torch.Generator` so that experiments are reprod
 bash scripts/run_all.sh
 ```
 
-This regenerates both synthetic datasets, runs every experiment, writes `experiments/results/*.json`, builds `paper_results.json`, the figures in `figures/`, and `dashboard.html`. Expected runtime is about 9 hours on a 2-core CPU. The published results were produced by running the same commands in chunks (per seed, then the aggregators), which is equivalent because every stage reads the shared cache. CICIDS2017 models are cached per (model, fold, seed) under `experiments/results/cache/`, keyed by a hash of the configuration and the core source files, so an interrupted run resumes where it stopped.
+This regenerates both synthetic datasets, runs every experiment, writes `experiments/results/*.json`, builds `paper_results.json`, the figures in `figures/`, and `dashboard.html`. Expected runtime is about 19 hours on a 2-core CPU, about 10 of them for the score-minimizing attack suite. The published results were produced by running the same commands in chunks (per seed, then the aggregators), which is equivalent because every stage reads the shared cache. CICIDS2017 models are cached per (model, fold, seed) under `experiments/results/cache/`, keyed by a hash of the configuration and the core source files, so an interrupted run resumes where it stopped.
 
 | Script | What it produces |
 |---|---|
@@ -98,12 +99,18 @@ This merges the results into `paper_results.json`, regenerates the figures, rebu
 cd paper && npm install && node build_paper.js    # writes paper/out/FAGI.docx
 ```
 
+The LaTeX version for TMLR (named and anonymous) uses the same builder. Put `tmlr.sty`, `tmlr.bst` and `fancyhdr.sty` from the [TMLR style files](https://github.com/JmlrOrg/tmlr-style-file) in `paper/tmlr-style/`, then:
+
+```bash
+cd paper && bash build_tex.sh    # writes paper/out/tex/FAGI.tex and paper/out/tex_anon/FAGI.tex (and PDFs if pdflatex is installed)
+```
+
 Every number in the paper is read from `paper_results.json`, so rerunning the experiments and rebuilding updates the tables and text. Each directional statement in the paper is checked against the results; if a rerun changes one, the build stops and names it. See [`paper/README.md`](paper/README.md).
 
 ### Evaluation protocol in brief
 
 * **CICIDS2017**: all 8 day files, cleaned (non-finite rows, exact duplicates, constant and duplicated columns removed; mis-encoded Web Attack labels fixed), then a stratified sample of up to 3,000 flows per attack label plus an equal number of benign flows. 5-fold CV stratified on the original label, 3 seeds per fold. Each training fold is split into a **private training set** (what DP protects) and a **reference pool** that supplies graph neighbors at training and inference time; no private record ever appears in another record's graph.
-* **Attacks** target 2,000 malicious test flows per fold (the same flows for every model); benign flows are left unperturbed. Every model is attacked through its own inference path (neighbor retrieval included) with: best-of-32 benign mimicry; its own white-box attack where it has gradients (adaptive PGD that re-retrieves neighbors at every step, with 2 restarts and best-iterate tracking, plus PGD followed by re-retrieval, for graph models; PGD for flat models); and transfer of the MLP's PGD examples and the GNN's adaptive examples. A flow counts as detected only if it survives every attack. PGD on a fixed neighborhood is reported separately and excluded from the worst case. A 100-step adaptive check runs on seed 0.
+* **Attacks** target 2,000 malicious test flows per fold (the same flows for every model); benign flows are left unperturbed. Every model is attacked through its own inference path (neighbor retrieval included). The stored attacks from training time are best-of-32 benign mimicry, white-box PGD (adaptive PGD that re-retrieves neighbors at every step with 2 restarts, plus PGD followed by re-retrieval, for graph models), and transfer of the MLP's PGD and the GNN's adaptive examples. `experiments/strong_attacks.py` then minimizes each model's score from the cached models: a retrieval-aware neighborhood attack that pulls a flow toward benign pool flows and away from malicious ones, logit-margin gradient attacks (a soft vote for k-NN), transfer of the best examples between five source models, and score-based random search (2,000 queries per flow for the random forest). Each flow keeps its lowest score, so the same examples serve every threshold. A flow counts as detected only if it survives every attack. PGD on a fixed neighborhood is reported separately and excluded from the worst case. Paired tests use the five fold means (seeds averaged), with win counts.
 * **Temporal protocol**: within each day file, rows follow flow completion order; the earlier 70% (split into private set and pool) trains and the later 30% tests.
 * **Privacy**: δ = 10⁻⁶. Hyperparameters were fixed in advance and not tuned on the evaluation data.
 * **Synthetic API sessions**: `data/synthetic/generator.py` (original) and `--difficulty hard`, where some benign users send admin, export or SQL-like requests and half of attack calls carry ordinary payloads. Features are divided by fixed per-feature scales computed once from a public calibration sample (the original generator with seed 7, never used for evaluation, and applied to both the original and the hard data), so no statistics are fit on private or test data.

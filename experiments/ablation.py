@@ -65,6 +65,10 @@ def cicids(data_path):
             # margin of the cached model; the stored values are checked against it.
             model = folds.load_model(k, f, 0)
             lm64, ln64 = loss64(model, d["Gp"], d["Ap"], d["yp"]), loss64(model, d["Gte"], d["Ate"], d["yte"])
+            if GRAPH_VARIANTS[k].get("overfit"):
+                # Same subsample as cicids_folds._train (seed 1000 f + 100 s, plus 7, with s = 0).
+                sub = np.random.RandomState(1000 * f + 7).choice(len(d["yp"]), CONFIG["overfit_n"], replace=False)
+                lm64 = lm64[sub]
             assert np.allclose(lm64, mm["loss_members"], atol=1e-4) and np.allclose(ln64, mm["loss_nonmembers"], atol=1e-4)
             mm["loss_members"], mm["loss_nonmembers"] = lm64, ln64
             rep = mia_report(mm["loss_members"], mm["loss_nonmembers"], mm["labels_members"], d["labels_te"], seed=f)
