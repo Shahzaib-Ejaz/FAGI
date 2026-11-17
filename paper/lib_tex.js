@@ -11,7 +11,7 @@ const MAP = {
   "Σ": "\\ensuremath{\\Sigma}", "←": "\\ensuremath{\\leftarrow}", "±": "\\ensuremath{\\pm}", "×": "\\ensuremath{\\times}",
   "−": "\\ensuremath{-}", "½": "\\ensuremath{\\frac{1}{2}}", "‖": "\\ensuremath{\\Vert}", "∅": "\\ensuremath{\\emptyset}",
   "⌈": "\\ensuremath{\\lceil}", "⌉": "\\ensuremath{\\rceil}", "∈": "\\ensuremath{\\in}", "∇": "\\ensuremath{\\nabla}",
-  "∞": "\\ensuremath{\\infty}", "≤": "\\ensuremath{\\leq}", "≥": "\\ensuremath{\\geq}", "·": "\\textperiodcentered{}",
+  "∞": "\\ensuremath{\\infty}", "≈": "\\ensuremath{\\approx}", "→": "\\ensuremath{\\rightarrow}", "⌊": "\\ensuremath{\\lfloor}", "⌋": "\\ensuremath{\\rfloor}", "≤": "\\ensuremath{\\leq}", "≥": "\\ensuremath{\\geq}", "·": "\\textperiodcentered{}",
   "–": "--", "—": "---", "’": "'", "‘": "`", "é": "\\'e", "è": "\\`e", "“": "``", "”": "''",
 };
 const SPECIAL = {

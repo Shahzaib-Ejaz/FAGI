@@ -159,8 +159,8 @@ const P = (t, o) => L.body(cite(t), o);
 const k = [];
 
 const TITLE = "FAGI: Measuring the Costs of Adversarial Training, Edge Filtering, and Differential Privacy in Graph-Based Threat Detection";
-const title = L.titleBlock({ title: TITLE, author: "Shahzaib Ejaz",
-  affiliation: "Department of Computer Science, North American University, Houston, TX, USA", email: "sejaz@na.edu" });
+const title = L.titleBlock(ANON ? { title: TITLE, author: "Anonymous authors", affiliation: "Paper under double-blind review", email: "" }
+  : { title: TITLE, author: "Shahzaib Ejaz", affiliation: "Department of Computer Science, North American University, Houston, TX, USA", email: "sejaz@na.edu" });
 
 const HAVE_XC = !!(R.extra_controls && R.extra_controls.pool10 && R.extra_controls.pool_only && R.extra_controls.dp_controls && R.extra_controls.pool_overlap);
 const XO = HAVE_XC ? R.extra_controls.pool_overlap : null, AC = R.attack_checks;

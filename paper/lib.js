@@ -134,7 +134,7 @@ const unnumbered = (title) => new Paragraph({ children: [new TextRun({ text: tit
 
 function build(titleBlock, bodyChildren, outPath, runningHead) {
   const doc = new Document({
-    creator: "Shahzaib Ejaz",
+    creator: process.env.FAGI_ANON ? "Anonymous" : "Shahzaib Ejaz",
     title: "FAGI",
     styles: {
       default: { document: { run: { font: FONT, size: 20 } } },
