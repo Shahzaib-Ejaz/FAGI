@@ -129,7 +129,9 @@ def evaluate(folds, names, fold_list=None):
             row = rc.evaluate(sc, np.random.RandomState(12000 + 100 * f), EPS_LIST)
             mt = metrics(d["yte"], b["pred_clean"])
             row["fold"] = f
-            row.update({"clean": mt["accuracy"], "fpr": mt["fpr"], "epsilon": (b["info"] or {}).get("epsilon"),
+            eps_dp = (b["info"] or {}).get("epsilon")
+            eps_dp = eps_dp if eps_dp is not None and math.isfinite(eps_dp) else None  # sigma = 0: no guarantee
+            row.update({"clean": mt["accuracy"], "fpr": mt["fpr"], "epsilon": eps_dp,
                         "sigma": (b["info"] or {}).get("sigma"), "n_train": int(len(d["yp"])), "n_pool": int(len(d["yr"]))})
             rows.append(row)
             print(f"  [{folds.protocol}] {m:<15} fold {f}: clean {row['clean']:.4f} FPR {row['fpr']:.4f}  matched 1%: "

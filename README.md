@@ -29,7 +29,8 @@ Worst-case recall on attacked malicious flows (CICIDS2017, attack budget ε_adv 
 
 * Adversarial training is what keeps the graph detector working under attack. DP-SGD gives most of that back.
 * GNNGuard has no measurable effect, and a k-NN vote that needs no training matches FAGI without DP and beats FAGI.
-* The random forest is the most accurate clean detector, but a query attack on its scores leaves 21.0% detected even at ε_adv = 0.1.
+* The random forest is the most accurate clean detector, but a query attack on its scores leaves 65.4% detected at ε_adv = 0.1 at the matched rate (21.0% at its default threshold) and none at 0.5.
+* Controls (seed 0): DP-SGD's robustness cost is the noise, not clipping or sampling, and retuning the training for privacy does not recover it at ε_adv = 0.5. Models trained only on the public reference pool, with no private record, match or beat FAGI, even when the pool is a ninth the size of the private set.
 * At each model's default threshold the ranking looks different, because the models flag very different amounts of benign traffic. Compare models at a matched false-positive rate.
 * On a file-order split (train on the first 70% of each day file, test on the rest), no model keeps more than 2.8% at this budget.
 
@@ -40,7 +41,7 @@ git clone https://github.com/Shahzaib-Ejaz/FAGI.git
 cd FAGI
 pip install -r requirements.txt     # or requirements-lock.txt for the exact versions used
 pip install -e .
-python -m pytest -q                 # 72 tests
+python -m pytest -q                 # 78 tests
 ```
 
 ## Quick start
@@ -80,6 +81,8 @@ This regenerates both synthetic datasets, runs every experiment, writes `experim
 | `experiments/robust_checks.py` | Worst-case recall at matched false-positive rates (0.5%, 1%, 2%; test- and pool-calibrated thresholds) for the CV, ablation and temporal models; adaptive-PGD restart curve |
 | `experiments/exp2_api_native.py` | Synthetic API sessions: all attacks, lateral movement, SQL injection; payload-feature ablation |
 | `experiments/exp4_federated.py` | Held-out organization, FedAvg with and without client-side DP-SGD, ε-matched centralized DP, membership inference |
+| `experiments/attack_checks.py` | Longer random search, a joint graph attack, a certified lower bound for the k-NN vote, per-label recall, tie-breaking spread |
+| `experiments/extra_controls.py` | Clipping-only and privacy-tuned DP-SGD, models trained on the pool alone, a 10% pool, pool overlap (`--parts` runs a subset) |
 
 ### After rerunning an experiment
 
