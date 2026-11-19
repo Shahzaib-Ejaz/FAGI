@@ -366,7 +366,7 @@ if (!XC.missing) {
 k.push(L.subsection("C. Controls for DP and for the Pool"));
 k.push(P(XC.dpPara));
 k.push(P(XC.poolPara));
-k.push(...L.tableTitle(TN.xc, "Controls for DP-SGD and for the reference pool (CICIDS2017, seed 0, %)"));
+k.push(...L.tableTitle(TN.xc, `Controls for DP-SGD and for the reference pool (CICIDS2017, ${XC.scopeTxt}, %)`));
 k.push(L.table(XC.table.header, XC.table.rows, [600, 900, 600, 480, 430, 480, 480, 565, 565]));
 k.push(L.caption(XC.table.note, false));
 k.push(L.subsection("D. Privacy Accounting"));
