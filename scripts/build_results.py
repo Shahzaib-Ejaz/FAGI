@@ -18,10 +18,11 @@ FILES = {
     "ablation": "ablation.json", "ablation_hard": "ablation_hard.json", "mia_canary": "mia_canary.json",
     "exp5_temporal": "exp5_temporal.json", "robust_checks": "robust_checks.json",
     "extra_controls": "extra_controls.json", "attack_checks": "attack_checks.json",
+    "unsw_benchmark": "unsw_benchmark.json",
 }
 
 
-OPTIONAL = {"extra_controls", "attack_checks"}
+OPTIONAL = {"extra_controls", "attack_checks", "unsw_benchmark"}
 
 
 def load(name):

@@ -25,6 +25,7 @@ $PY experiments/exp5_temporal.py 2>&1 | tee "$LOG/exp5_temporal.log"
 $PY experiments/robust_checks.py 2>&1 | tee "$LOG/robust_checks.log"
 $PY experiments/extra_controls.py 2>&1 | tee "$LOG/extra_controls.log"
 $PY experiments/attack_checks.py 2>&1 | tee "$LOG/attack_checks.log"
+$PY experiments/unsw_benchmark.py 2>&1 | tee "$LOG/unsw_benchmark.log"  # needs data/unsw_nb15/ (see README)
 $PY experiments/ablation.py --skip_synthetic 2>&1 | tee "$LOG/ablation.log"
 $PY experiments/exp3_adversarial_robustness.py --api_data $H 2>&1 | tee "$LOG/exp3.log"
 $PY experiments/exp2_api_native.py 2>&1 | tee "$LOG/exp2.log"

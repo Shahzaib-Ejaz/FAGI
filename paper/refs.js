@@ -19,6 +19,7 @@ module.exports = {
   gnnguard: 'X. Zhang and M. Zitnik, "GNNGuard: Defending graph neural networks against adversarial attacks," in Proc. NeurIPS, 2020, pp. 9263–9275.',
   sommer: 'R. Sommer and V. Paxson, "Outside the closed world: On using machine learning for network intrusion detection," in Proc. IEEE S&P, 2010, pp. 305–316.',
   papernot: 'N. Papernot, P. McDaniel, A. Sinha, and M. Wellman, "SoK: Security and privacy in machine learning," in Proc. IEEE EuroS&P, 2018, pp. 399–414.',
+  unsw: 'N. Moustafa and J. Slay, "UNSW-NB15: A comprehensive data set for network intrusion detection systems (UNSW-NB15 network data set)," in Proc. Military Communications and Information Systems Conf. (MilCIS), 2015, pp. 1–6.',
   cicids: 'I. Sharafaldin, A. H. Lashkari, and A. A. Ghorbani, "Toward generating a new intrusion detection dataset and intrusion traffic characterization," in Proc. ICISSP, 2018, pp. 108–116.',
   securebert: 'E. Aghaei, X. Niu, W. Shadid, and E. Al-Shaer, "SecureBERT: A domain-specific language model for cybersecurity," in Proc. EAI SecureComm 2022, Springer, 2023, pp. 39–56, doi: 10.1007/978-3-031-25538-0_3.',
   li_cnn: 'Z. Li, Z. Qin, K. Huang, X. Yang, and S. Ye, "Intrusion detection using convolutional neural networks for representation learning," in Proc. ICONIP, 2017, pp. 858–866.',
