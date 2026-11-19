@@ -4,6 +4,7 @@ const FORMAT = process.env.FAGI_FORMAT || "docx";
 const ANON = !!process.env.FAGI_ANON;
 const L = require(FORMAT === "tex" ? "./lib_tex" : "./lib");
 const REFS = require("./refs");
+if (process.env.FAGI_ANON) REFS.ejaz = 'Anonymous, "Cloud API management and integration patterns in secure cloud computing environments," 2026.';
 
 const REPO = process.env.FAGI_REPO || path.resolve(__dirname, "..");
 const R = JSON.parse(fs.readFileSync(path.join(REPO, "experiments/results/paper_results.json"), "utf8"));
@@ -194,7 +195,7 @@ k.push(P(`The answers do not crown a single design. Compared at a matched false-
 // ---------- II ----------
 k.push(L.section("II. Related Work"));
 k.push(L.subsection("A. API Security and Evaluation Practice"));
-k.push(P(`Ejaz catalogued cloud API management anti-patterns such as excessive trust delegation and missing schema validation {ejaz}, and supply-chain compromises add structural risk {ohm,ladisa}. Sommer and Paxson explained why detectors trained on one traffic distribution often fail on another {sommer}. Arp et al. list evaluation pitfalls in security ML, including data snooping and sampling bias {arp}. CICIDS2017 {cicids} is the most used benchmark of its kind, and it has documented labeling problems {engelen}.`));
+k.push(P(`${ANON ? "Prior work" : "Ejaz"} catalogued cloud API management anti-patterns such as excessive trust delegation and missing schema validation {ejaz}, and supply-chain compromises add structural risk {ohm,ladisa}. Sommer and Paxson explained why detectors trained on one traffic distribution often fail on another {sommer}. Arp et al. list evaluation pitfalls in security ML, including data snooping and sampling bias {arp}. CICIDS2017 {cicids} is the most used benchmark of its kind, and it has documented labeling problems {engelen}.`));
 k.push(L.subsection("B. Graph Neural Networks for Intrusion Detection"));
 k.push(P(`Graph neural networks learn from structure and attributes through message passing {sage}. E-GraphSAGE applies GraphSAGE to flow graphs for network intrusion detection systems (NIDS) {egraphsage}, and graph learning has worked for related tasks such as security patch detection {graphspd}. Wang et al. re-evaluated graph NIDS and found that published results overstate what these models achieve under careful evaluation {wang25}. Neural detectors include autoencoders over flow features {kitsune} and CNNs over connection records rendered as images {li_cnn}. CNNs over raw bytes have also been used for malware {raff}.`));
 k.push(L.subsection("C. Adversarial Machine Learning in Security"));
@@ -374,10 +375,16 @@ k.push(P(`The next tests this design should face are problem-space attacks that 
 k.push(L.section("VIII. Conclusion"));
 k.push(P(`FAGI combines graph detection, adversarial training, edge filtering, and differentially private federated learning, and this paper measures each component instead of assuming it helps. On CICIDS2017, clean detection is easy for every model. Under attacks that minimize each model's score, held to a matched ${fprTxt} false-positive rate, adversarial training keeps the graph detector at ${pct(mf("fagi_no_dp", "0.5"))}% worst-case recall at ε_{adv} = 0.5 where an undefended GNN keeps ${pct(mf("gnn", "0.5"))}%, but with DP-SGD FAGI keeps ${pct(mf("fagi", "0.5"))}%. GNNGuard adds nothing, and an untrained k-NN vote (${pct(mf("knn", "0.5"))}%) matches adversarial training without DP and does better than FAGI. Drawing neighbors from a separate reference pool gives DP-SGD a per-record guarantee for the private half (ε_{DP} = ${fx(eC)}), ${XC.conclusion} DP's cost also falls on the smaller attack classes. Code, data loaders, and the scripts that produce every number in this paper are public.`));
 
+k.push(L.unnumbered("Broader Impact Statement"));
+k.push(P(`This paper describes evasion attacks on intrusion detectors. The attacks work in feature space without protocol constraints, so they show where a detector is weak rather than giving an attacker traffic that would pass on a real network, and the same methods are already standard in the literature we cite. The main practical risk runs the other way: a defender who reads a detector's robustness or privacy at its default threshold, or trusts the accounted ε for parts of the pipeline it does not cover, may deploy a weaker system than they think. We report matched-rate results and state what the guarantee leaves out for that reason. The reference pool is published unprotected, and an organization that adopts this design should treat the pool as public data.`));
+k.push(L.unnumbered("Reproducibility Statement"));
+k.push(P(ANON
+  ? `The code, data loaders, synthetic generators, tests, result files and the scripts that regenerate every table, figure and number in this paper are provided as anonymized supplementary material. Every directional claim in the text is checked against the results file when the paper is built. CICIDS2017 is public; the results file records the SHA-256 checksum of the archive we used, and Section V-A describes the cleaning steps.`
+  : `The code, data loaders, synthetic generators, tests, result files and the scripts that regenerate every table, figure and number in this paper are at https://github.com/Shahzaib-Ejaz/FAGI. Every directional claim in the text is checked against the results file when the paper is built. CICIDS2017 is public; the results file records the SHA-256 checksum of the archive we used, and Section V-A describes the cleaning steps.`));
 k.push(L.unnumbered("Acknowledgment"));
 k.push(P(ANON
   ? `CICIDS2017 was provided by the Canadian Institute for Cybersecurity, University of New Brunswick. The author used an AI assistant for code and drafting and reviewed all content.`
-  : `The author thanks Dr. Ihsan Said (North American University) for guidance on research methodology. CICIDS2017 was provided by the Canadian Institute for Cybersecurity, University of New Brunswick. The author used an AI assistant for code and drafting and reviewed all content. Code, loaders, generator, tests, and the scripts that regenerate every table and figure are at https://github.com/Shahzaib-Ejaz/FAGI.`));
+  : `The author thanks Dr. Ihsan Said (North American University) for guidance on research methodology. CICIDS2017 was provided by the Canadian Institute for Cybersecurity, University of New Brunswick. The author used an AI assistant for code and drafting and reviewed all content.`));
 
 k.push(L.unnumbered("References"));
 order.forEach((key, i) => k.push(L.reference(i + 1, REFS[key], key)));
