@@ -95,6 +95,10 @@ module.exports = function ({ XC, M, pct, pp, fx, int, claim, cfg, nP, nR, eC, eM
 
   return {
     dpPara, poolPara, table, accounting,
+    short: poolBeats10 && poolBeatsHalf
+      ? "models trained on the pool alone match or beat FAGI even when the pool is a ninth the size of the private set"
+      : poolBeatsHalf ? "models trained on the pool alone match FAGI when the pool is half the training data, but not when it is small"
+        : "models trained on the pool alone come close to FAGI",
     abstract: poolBeats10 && poolBeatsHalf
       ? "Models trained only on the public reference pool, which use no private record, match or beat FAGI (seed 0, three folds): a random forest in clean accuracy, and FAGI without DP or the k-NN vote in matched recall at ε_{adv} = 0.5, even when the pool is a ninth the size of the private set. "
       : poolBeatsHalf

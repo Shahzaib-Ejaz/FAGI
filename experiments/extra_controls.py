@@ -1,4 +1,4 @@
-"""Controls added after review, on CICIDS2017 (seed 0, 5 folds, attack budgets 0.1 and 0.5).
+"""Controls added after review, on CICIDS2017 (5 folds x 3 seeds by default, attack budgets 0.1 and 0.5).
 
 1. What DP-SGD costs, separated from what clipping and the training configuration cost (standard split):
      fagi_clip_only   FAGI trained with DP-SGD's per-example clipping and Poisson sampling but no noise (sigma = 0,
@@ -118,25 +118,37 @@ class Folds(CICIDSFolds):
         return model, info
 
 
-def evaluate(folds, names, fold_list=None):
+def eval_one(folds, m, f, s):
+    d = folds.fold(f)
+    b = folds.result(m, f, s)
+    sc = rc.scores_for(folds, m, f, s, EPS_LIST)
+    row = rc.evaluate(sc, np.random.RandomState(12000 + 100 * f + s), EPS_LIST)
+    mt = metrics(d["yte"], b["pred_clean"])
+    eps_dp = (b["info"] or {}).get("epsilon")
+    eps_dp = eps_dp if eps_dp is not None and math.isfinite(eps_dp) else None  # sigma = 0: no guarantee
+    row.update({"clean": mt["accuracy"], "fpr": mt["fpr"], "epsilon": eps_dp,
+                "sigma": (b["info"] or {}).get("sigma"), "n_train": int(len(d["yp"])), "n_pool": int(len(d["yr"]))})
+    return row
+
+
+def evaluate(folds, names, fold_list=None, seeds=(0,)):
+    """One row per fold. With several seeds a fold's row is the mean over its seeds, so tests stay paired by fold."""
     out = {}
     for m in names:
         rows = []
         for f in (fold_list if fold_list is not None else range(folds.n_splits)):
-            d = folds.fold(f)
-            b = folds.result(m, f, 0)
-            sc = rc.scores_for(folds, m, f, 0, EPS_LIST)
-            row = rc.evaluate(sc, np.random.RandomState(12000 + 100 * f), EPS_LIST)
-            mt = metrics(d["yte"], b["pred_clean"])
-            row["fold"] = f
-            eps_dp = (b["info"] or {}).get("epsilon")
-            eps_dp = eps_dp if eps_dp is not None and math.isfinite(eps_dp) else None  # sigma = 0: no guarantee
-            row.update({"clean": mt["accuracy"], "fpr": mt["fpr"], "epsilon": eps_dp,
-                        "sigma": (b["info"] or {}).get("sigma"), "n_train": int(len(d["yp"])), "n_pool": int(len(d["yr"]))})
+            srows = [eval_one(folds, m, f, s) for s in seeds]
+            row = {}
+            for k, v in srows[0].items():
+                if isinstance(v, (int, float)) or v is None:
+                    vals = [r[k] for r in srows]
+                    row[k] = float(np.mean(vals)) if all(x is not None for x in vals) else None
+            row.update({"fold": f, "seeds": list(seeds), "n_train": srows[0]["n_train"], "n_pool": srows[0]["n_pool"]})
             rows.append(row)
-            print(f"  [{folds.protocol}] {m:<15} fold {f}: clean {row['clean']:.4f} FPR {row['fpr']:.4f}  matched 1%: "
+            print(f"  [{folds.protocol}] {m:<15} fold {f} seeds {list(seeds)}: clean {row['clean']:.4f} FPR {row['fpr']:.4f}  matched 1%: "
                   f"0.1 {row['fixed_0.01_0.1']:.3f}  0.5 {row['fixed_0.01_0.5']:.3f}", flush=True)
-        out[m] = {k: ms([r[k] for r in rows]) for k in rows[0] if isinstance(rows[0][k], (int, float)) and rows[0][k] is not None}
+        out[m] = {k: ms([r[k] for r in rows]) for k in rows[0]
+                  if k not in ("fold", "seeds") and isinstance(rows[0][k], (int, float))}
         out[m]["per_fold"] = rows
     return out
 
@@ -169,9 +181,10 @@ def main():
     ap.add_argument("--data_path", default="data/cicids2017/")
     ap.add_argument("--output", default="experiments/results/extra_controls.json")
     ap.add_argument("--parts", nargs="*", default=["dp", "poolonly", "pool10", "overlap"])
-    ap.add_argument("--pool_folds", type=int, nargs="*", default=[0, 1, 2], help="folds for the pool-only and 10%%-pool protocols")
+    ap.add_argument("--pool_folds", type=int, nargs="*", default=[0, 1, 2, 3, 4], help="folds for the pool-only and 10%%-pool protocols")
+    ap.add_argument("--seeds", type=int, nargs="*", default=list(CONFIG["seeds"]), help="seeds averaged within each fold")
     args = ap.parse_args()
-    out = {"env": env_info(), "tuned": TUNED, "eps": EPS_LIST, "seed": 0}
+    out = {"env": env_info(), "tuned": TUNED, "eps": EPS_LIST, "seeds": args.seeds, "pool_folds": args.pool_folds}
     if os.path.exists(args.output):
         import json
         with open(args.output) as fh:
@@ -179,21 +192,24 @@ def main():
     main_names = ["knn", "gnn", "fagi_no_dp", "fagi", "rf"]
     if "dp" in args.parts:
         F = Folds(args.data_path)
-        r = evaluate(F, ["fagi_clip_only", "fagi_dp_tuned", "fagi", "fagi_no_dp"])
+        r = evaluate(F, ["fagi_clip_only", "fagi_dp_tuned", "fagi", "fagi_no_dp"], seeds=args.seeds)
         out["dp_controls"] = {"models": r, "tests": {**tests(r, [("fagi_clip_only", "fagi"), ("fagi_dp_tuned", "fagi"), ("fagi_no_dp", "fagi_clip_only")], "fixed_0.01_0.5"),
                                                     **tests(r, [("fagi_clip_only", "fagi"), ("fagi_dp_tuned", "fagi"), ("fagi_no_dp", "fagi_clip_only")], "clean")}}
         save_json(out, args.output)
     if "poolonly" in args.parts:
-        r = evaluate(Folds(args.data_path, train_on="pool"), ["rf", "gnn", "fagi_no_dp"], args.pool_folds)
+        r = evaluate(Folds(args.data_path, train_on="pool"), ["rf", "gnn", "fagi_no_dp"], args.pool_folds, args.seeds)
         out["pool_only"] = {"models": r}
         save_json(out, args.output)
     if "overlap" in args.parts:
         out["pool_overlap"] = pool_overlap(args.data_path)
         save_json(out, args.output)
-    if "pool10" in args.parts:
-        r = evaluate(Folds(args.data_path, pool_fraction=0.1), main_names, args.pool_folds)
-        r0 = evaluate(Folds(args.data_path, pool_fraction=0.1, train_on="pool"), ["rf", "gnn", "fagi_no_dp"], args.pool_folds)
-        out["pool10"] = {"models": r, "pool_only": r0}
+    # "pool10" runs both halves; "pool10main" and "pool10pool" run one each so two workers can share the work.
+    if {"pool10", "pool10main"} & set(args.parts):
+        out.setdefault("pool10", {})["models"] = evaluate(Folds(args.data_path, pool_fraction=0.1), main_names, args.pool_folds, args.seeds)
+        save_json(out, args.output)
+    if {"pool10", "pool10pool"} & set(args.parts):
+        out.setdefault("pool10", {})["pool_only"] = evaluate(Folds(args.data_path, pool_fraction=0.1, train_on="pool"),
+                                                             ["rf", "gnn", "fagi_no_dp"], args.pool_folds, args.seeds)
         save_json(out, args.output)
 
 

@@ -26,6 +26,7 @@ module.exports = function ({ F0, FH, M, pct, fx, claim, int, nMembers, batch, ep
 
   return {
     rows: rows.filter(([k]) => F0[k] && FH[k]),
+    short: `On synthetic API sessions, federated averaging helps an organization whose data never enters training, but with client DP-SGD it does no better than private local training, and centralized private training at the same ε_{DP} does far better.`,
     abstract: `On synthetic API sessions, federated averaging helps an unseen organization without DP; with client DP-SGD it is level with private local training on one generator and below it on the harder one, and centralized training at the same ε_{DP} is far better than both.`,
     body,
   };

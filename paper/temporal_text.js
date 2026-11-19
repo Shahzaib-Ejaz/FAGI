@@ -37,6 +37,7 @@ module.exports = function ({ TP, TPB, B, AB, M, pct, pp, int, claim, w, FXT, FXC
 
   return {
     intro, body,
+    short: `On a file-order split that tests on the last rows of each day file, no model detects more than ${Math.ceil(100 * max05)}% of attacked flows at ε_{adv} = 0.5.`,
     abstract: `On a file-order split that tests on the last rows of each day file, every model we run on it loses at least ${atLeast} points of clean accuracy, FAGI ends as the least accurate model (${pct(c("fagi"), 2)}%, with a ${pct(M(TPB.fagi.fpr), 2)}% false-positive rate), and no model detects more than ${Math.ceil(100 * max05)}% of attacked flows at ε_{adv} = 0.5.`,
     discussion: `The file-order split qualifies all of this: on the held-out end of each day file, clean accuracy drops for every model, DP costs FAGI more, and no model is robust at ε_{adv} = 0.5.`,
   };
