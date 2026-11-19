@@ -82,6 +82,7 @@ This regenerates both synthetic datasets, runs every experiment, writes `experim
 | `experiments/exp2_api_native.py` | Synthetic API sessions: all attacks, lateral movement, SQL injection; payload-feature ablation |
 | `experiments/exp4_federated.py` | Held-out organization, FedAvg with and without client-side DP-SGD, ε-matched centralized DP, membership inference |
 | `experiments/attack_checks.py` | Longer random search, a joint graph attack, a certified lower bound for the k-NN vote, per-label recall, tie-breaking spread |
+| `experiments/unsw_benchmark.py` | The main comparison on UNSW-NB15 (same sampling, pool split, models, attack suite and matched-FPR evaluation) |
 | `experiments/extra_controls.py` | Clipping-only and privacy-tuned DP-SGD, models trained on the pool alone, a 10% pool, pool overlap (`--parts` runs a subset) |
 
 ### After rerunning an experiment
@@ -121,6 +122,8 @@ Every number in the paper is read from `paper_results.json`, so rerunning the ex
 ## Datasets
 
 **CICIDS2017** — download `MachineLearningCSV.zip` from the [Canadian Institute for Cybersecurity](https://www.unb.ca/cic/datasets/ids-2017.html) and extract the eight CSV files into `data/cicids2017/`. See [`data/README.md`](data/README.md) for the expected files, checksums and the cleaning steps.
+
+**UNSW-NB15** — download `UNSW_NB15_training-set.csv` and `UNSW_NB15_testing-set.csv` from the "Training and Testing Sets" folder of the [UNSW-NB15 page](https://research.unsw.edu.au/projects/unsw-nb15-dataset) into `data/unsw_nb15/`. `data/unsw_nb15.py` checks the row counts and records the SHA-256 checksums; `experiments/unsw_benchmark.py` repeats the main comparison on it.
 
 **Synthetic API sessions** — `python data/synthetic/generator.py` writes `data/synthetic/sessions_final.json` (seed 42, 4,000 sessions, 5 organizations); add `--difficulty hard --output data/synthetic/sessions_hard.json` for the hard variant.
 

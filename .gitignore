@@ -12,3 +12,4 @@ paper/node_modules/
 paper/out/
 paper/package-lock.json
 paper/tmlr-style/
+data/unsw_nb15/*.csv
