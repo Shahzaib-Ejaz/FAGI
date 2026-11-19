@@ -1,4 +1,4 @@
-"""The main CICIDS2017 comparison repeated on UNSW-NB15 (5 folds x 3 seeds, attack budgets 0.1 and 0.5).
+"""The main CICIDS2017 comparison repeated on UNSW-NB15 (5 folds x CONFIG seeds by default; --seeds 0 for one seed; attack budgets 0.1 and 0.5).
 
 Same protocol as CICIDS2017: stratified sample (at most 3,000 flows per attack category, as many benign flows as
 attack flows), 5-fold cross-validation, each training fold split into a private half and a public reference pool,
